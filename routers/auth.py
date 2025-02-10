@@ -39,7 +39,8 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
     user = User(
         full_name=user_data.full_name,
         email=user_data.email,
-        password_hash=hashed_password
+        password_hash=hashed_password,
+        is_admin=0
     )
     db.add(user)
     db.commit()
