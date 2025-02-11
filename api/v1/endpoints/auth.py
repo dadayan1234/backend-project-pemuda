@@ -2,12 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from core.security import create_access_token, verify_token
 from core.database import SessionLocal
-from schemas.user import UserCreate, UserLogin
-from models.user import User
+from ....schemas.user import UserCreate  # Relative import
+from ..models.user import User  # Relative import
 from passlib.context import CryptContext
 
 router = APIRouter()
-
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def get_password_hash(password):

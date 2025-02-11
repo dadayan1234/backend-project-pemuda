@@ -2,6 +2,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 import os
 from datetime import datetime
 from core.security import verify_token
+from ..models.user import User
 
 router = APIRouter()
 
