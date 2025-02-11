@@ -18,8 +18,11 @@ def verify_password(plain_password, hashed_password):
 @router.post("/register")
 async def register(user: UserCreate):
     db = SessionLocal()
-    db_user = db.query(User).filter(User.username == user.username).first()
-    if db_user:
+    if (
+        db_user := db.query(User)
+        .filter(User.username == user.username)
+        .first()
+    ):
         raise HTTPException(status_code=400, detail="Username already registered")
     hashed_password = get_password_hash(user.password)
     new_user = User(username=user.username, password=hashed_password, role=user.role)
