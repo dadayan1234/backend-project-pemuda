@@ -16,4 +16,4 @@ class Finance(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    creator = relationship("User", back_populates="created_finances")
+    # creator = relationship("User", back_populates="created_finances")

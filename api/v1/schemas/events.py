@@ -16,7 +16,7 @@ class EventUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     date: Optional[datetime] = None
-    time: Optional[time] = None
+    time: Optional[time] = None # type: ignore
     location: Optional[str] = None
 
 class EventPhotoResponse(BaseModel):

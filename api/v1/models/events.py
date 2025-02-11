@@ -16,7 +16,7 @@ class Event(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    creator = relationship("User", back_populates="created_events")
+    # creator = relationship("User", back_populates="created_events")
     photos = relationship("EventPhoto", back_populates="event", cascade="all, delete-orphan")
     attendances = relationship("Attendance", back_populates="event", cascade="all, delete-orphan")
     feedback = relationship("Feedback", back_populates="event", cascade="all, delete-orphan")

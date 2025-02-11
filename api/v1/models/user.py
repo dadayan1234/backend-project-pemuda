@@ -10,12 +10,11 @@ class User(Base):
     username = Column(String(255), unique=True, index=True)
     password = Column(String(255))
     role = Column(Enum("Admin", "Member"))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     
     member_info = relationship("Member", back_populates="user", uselist=False)
-    created_events = relationship("Event", back_populates="creator")
-    created_news = relationship("News", back_populates="creator")
+    # created_news = relationship("News", back_populates="creator")
 
 class Member(Base):
     __tablename__ = "members"
@@ -27,8 +26,8 @@ class Member(Base):
     division = Column(String(255))
     address = Column(Text)
     position = Column(String(255))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     
     user = relationship("User", back_populates="member_info")
     attendances = relationship("Attendance", back_populates="member")
