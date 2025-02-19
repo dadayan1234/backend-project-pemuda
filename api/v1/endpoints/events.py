@@ -8,7 +8,7 @@ from ..models.events import Event, Attendance
 from ..models.user import User
 from ..schemas.events import (
     EventCreate, EventUpdate, EventResponse,
-    AttendanceCreate, AttendanceUpdate, AttendanceResponse
+    AttendanceCreate, AttendanceUpdate, AttendanceResponse, EventSearch
 )
 from ..models.notification import Notification
 
@@ -63,6 +63,28 @@ async def get_events(
         .limit(limit)
         .all()
     )
+    
+@router.get("/", response_model=List[EventSearch])
+async def search_events(
+    title: str = None,
+    description: str = None,
+    date: datetime = None,
+    time: timedelta = None,
+    location: str = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Event)
+    if title:
+        query = query.filter(Event.title.ilike(f"%{title}%"))
+    if description:
+        query = query.filter(Event.description.ilike(f"%{description}%"))
+    if date:
+        query = query.filter(Event.date == date)
+    if time:
+        query = query.filter(Event.time == time)
+    if location:
+        query = query.filter(Event.location.ilike(f"%{location}%"))
+    return query.all()
 
 @router.get("/{event_id}", response_model=EventResponse)
 async def get_event(

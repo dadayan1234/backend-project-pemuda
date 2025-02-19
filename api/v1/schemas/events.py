@@ -57,3 +57,9 @@ class AttendanceResponse(BaseModel):
 
     class Config:
         orm_mode = True
+        
+class EventSearch(BaseModel):
+    title: str
+    description: str
+    date: datetime
+    
