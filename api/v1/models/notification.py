@@ -4,13 +4,9 @@ from datetime import datetime
 from core.database import Base
 
 class Notification(Base):
-    __tablename__ = "notifications"
+    __tablename__ = "notification"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
     title = Column(String(255))
     content = Column(Text)
-    is_read = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # user = relationship("User", back_populates="notifications")
+    created_at = Column(DateTime, default=datetime.now)

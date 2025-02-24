@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from functools import wraps
 from fastapi import HTTPException
 
-SQLALCHEMY_DATABASE_URL = "mysql+pymysql://root:@localhost/business_process_db"
+SQLALCHEMY_DATABASE_URL = "mysql+pymysql://root:@localhost/project_pemuda"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
