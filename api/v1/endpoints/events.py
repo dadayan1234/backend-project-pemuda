@@ -37,15 +37,14 @@ async def create_event(
     db.refresh(db_event)
 
     # Send notification to all members
-    members = db.query(User).filter(User.role == "Member").all()
-    for member in members:
-        background_tasks.add_task(
-            create_notification,
-            db=db,
-            user_id=member.id,
-            title=f"New Event: {event.title}",
-            content=f"A new event has been scheduled for {event.date}"
-        )
+    # members = db.query(User).filter(User.role == "Member").all()
+    # for member in members:
+    background_tasks.add_task(
+        create_notification,
+        db=db,
+        title=f"New Event: {event.title}",
+        content=f"A new event has been scheduled for {event.date}"
+    )
 
     return db_event
 

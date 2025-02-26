@@ -32,7 +32,7 @@ class MemberResponse(BaseModel):
     position: str
     
     class Config:
-        orm_mode = True
+        model_config = {"from_attributes": True}
 
 class User(UserBase):
     id: int

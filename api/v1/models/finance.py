@@ -11,6 +11,7 @@ class Finance(Base):
     category = Column(Enum("Pemasukan", "Pengeluaran"), nullable=False)
     date = Column(DateTime, nullable=False)
     description = Column(Text, nullable=False)
+    balance = Column(DECIMAL(10, 2), nullable=False)
     document_url = Column(String(255))
     created_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
