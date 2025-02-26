@@ -161,9 +161,11 @@ async def delete_finance(
     db.delete(finance)
     db.commit()
 
-    # Perbarui saldo transaksi terbaru jika ada
-    last_transaction = db.query(Finance).order_by(Finance.date.desc()).first()
-    if last_transaction:
+    if (
+        last_transaction := db.query(Finance)
+        .order_by(Finance.date.desc())
+        .first()
+    ):
         last_transaction.balance = new_balance
         db.commit()
         db.refresh(last_transaction)
