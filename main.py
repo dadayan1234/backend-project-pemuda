@@ -5,6 +5,7 @@ from api.v1.endpoints import (
     news, minutes, #schedules,
     uploads, notification
 )
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(
     title="Business Process API",
@@ -22,6 +23,7 @@ app = FastAPI(
         {"name": "notifications", "description": "Notification management"}
     ]
 )
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # CORS middleware
 app.add_middleware(
