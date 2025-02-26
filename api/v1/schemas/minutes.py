@@ -7,6 +7,7 @@ class MeetingMinutesBase(BaseModel):
     description: Optional[str] = None
     date: date
     document_url: Optional[HttpUrl] = None
+    event_id: int  # Foreign Key ke tabel events
 
 class MeetingMinutesCreate(MeetingMinutesBase):
     created_by: int  # User ID yang membuat catatan rapat
@@ -14,8 +15,12 @@ class MeetingMinutesCreate(MeetingMinutesBase):
 class MeetingMinutesUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    date: Optional[date] = None # type: ignore
+    date: Optional[datetime.date] = None
     document_url: Optional[HttpUrl] = None
+    event_id: Optional[int] = None
+    
+    class Config:
+        arbitrary_types_allowed = True
 
 class MeetingMinutesResponse(MeetingMinutesBase):
     id: int
@@ -25,3 +30,4 @@ class MeetingMinutesResponse(MeetingMinutesBase):
 
     class Config:
         orm_mode = True
+        arbitrary_types_allowed = True

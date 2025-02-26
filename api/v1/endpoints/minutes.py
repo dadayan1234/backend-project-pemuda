@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from ..models.minutes import MeetingMinutes
+from ..models.events import Event  # Import the Event model
 from ..schemas.minutes import MeetingMinutesCreate, MeetingMinutesUpdate, MeetingMinutesResponse
 from core.database import get_db, admin_required
 from core.security import verify_token  # Sesuaikan dengan sistem autentikasi Anda
@@ -15,6 +16,11 @@ async def create_meeting_minutes(
     current_user: int = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
+    # Pastikan event_id ada di tabel events
+    event = db.query(Event).filter(Event.id == meeting_minutes.event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
     new_minutes = MeetingMinutes(**meeting_minutes.dict(), created_by=current_user)
     db.add(new_minutes)
     db.commit()
@@ -48,6 +54,12 @@ async def update_meeting_minutes(
     meeting = db.query(MeetingMinutes).filter(MeetingMinutes.id == minutes_id).first()
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting minutes not found")
+
+    # Pastikan event_id yang baru ada di tabel events jika diupdate
+    if update_data.event_id:
+        event = db.query(Event).filter(Event.id == update_data.event_id).first()
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
 
     for key, value in update_data.dict(exclude_unset=True).items():
         setattr(meeting, key, value)
