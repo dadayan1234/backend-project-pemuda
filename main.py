@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.v1.endpoints import (
     auth, events, finance, member,
-    news, #schedules, meeting_minutes, 
+    news, minutes, #schedules,
     uploads, notification
 )
 
@@ -39,6 +39,6 @@ app.include_router(finance.router, prefix="/api/v1/finance", tags=["finances"])
 app.include_router(member.router, prefix="/api/v1/members", tags=["members"])
 app.include_router(news.router, prefix="/api/v1/news", tags=["news"])
 # app.include_router(schedules.router, prefix="/api/v1/schedules", tags=["schedules"])
-# app.include_router(meeting_minutes.router, prefix="/api/v1/meeting-minutes", tags=["meeting-minutes"])
+app.include_router(minutes.router, prefix="/api/v1/meeting-minutes", tags=["meeting-minutes"])
 app.include_router(uploads.router, prefix="/api/v1/uploads", tags=["uploads"])
 app.include_router(notification.router, prefix="/api/v1/notifications", tags=["notifications"])
