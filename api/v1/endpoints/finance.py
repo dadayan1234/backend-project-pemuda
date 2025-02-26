@@ -19,7 +19,15 @@ async def create_finance(
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    db_finance = Finance(**finance.dict(), created_by=current_user.id)
+    # Ambil saldo terakhir
+    last_balance = db.query(Finance.balance).order_by(Finance.date.desc()).first()
+    last_balance = last_balance[0] if last_balance else Decimal('0')
+
+    # Hitung saldo baru
+    new_balance = last_balance + finance.amount if finance.category == "Pemasukan" else last_balance - finance.amount
+
+    # Simpan transaksi dengan saldo yang diperbarui
+    db_finance = Finance(**finance.dict(), balance=new_balance, created_by=current_user.id)
     db.add(db_finance)
     db.commit()
     db.refresh(db_finance)
@@ -97,12 +105,36 @@ async def update_finance(
     if not db_finance:
         raise HTTPException(status_code=404, detail="Finance record not found")
 
+    # Hitung selisih perubahan
+    old_amount = db_finance.amount
+    new_amount = finance_update.amount or old_amount
+    old_category = db_finance.category
+    new_category = finance_update.category or old_category
+
+    last_balance = db.query(Finance.balance).order_by(Finance.date.desc()).first()
+    last_balance = last_balance[0] if last_balance else Decimal('0')
+
+    # Hitung saldo baru berdasarkan perubahan kategori dan jumlah
+    if old_category == "Pemasukan":
+        last_balance -= old_amount
+    else:
+        last_balance += old_amount
+
+    if new_category == "Pemasukan":
+        new_balance = last_balance + new_amount
+    else:
+        new_balance = last_balance - new_amount
+
+    # Perbarui transaksi
     for field, value in finance_update.dict(exclude_unset=True).items():
         setattr(db_finance, field, value)
+
+    db_finance.balance = new_balance
 
     db.commit()
     db.refresh(db_finance)
     return db_finance
+
 
 @router.delete("/{finance_id}")
 @admin_required()
@@ -115,6 +147,25 @@ async def delete_finance(
     if not finance:
         raise HTTPException(status_code=404, detail="Finance record not found")
 
+    # Ambil saldo terakhir
+    last_balance = db.query(Finance.balance).order_by(Finance.date.desc()).first()
+    last_balance = last_balance[0] if last_balance else Decimal('0')
+
+    # Hitung saldo baru setelah penghapusan
+    if finance.category == "Pemasukan":
+        new_balance = last_balance - finance.amount
+    else:
+        new_balance = last_balance + finance.amount
+
+    # Hapus transaksi
     db.delete(finance)
     db.commit()
+
+    # Perbarui saldo transaksi terbaru jika ada
+    last_transaction = db.query(Finance).order_by(Finance.date.desc()).first()
+    if last_transaction:
+        last_transaction.balance = new_balance
+        db.commit()
+        db.refresh(last_transaction)
+
     return {"message": "Finance record deleted"}
