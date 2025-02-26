@@ -42,3 +42,7 @@ app.include_router(news.router, prefix="/api/v1/news", tags=["news"])
 app.include_router(minutes.router, prefix="/api/v1/meeting-minutes", tags=["meeting-minutes"])
 app.include_router(uploads.router, prefix="/api/v1/uploads", tags=["uploads"])
 app.include_router(notification.router, prefix="/api/v1/notifications", tags=["notifications"])
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
