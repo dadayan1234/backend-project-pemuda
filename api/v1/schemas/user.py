@@ -33,7 +33,7 @@ class MemberResponse(BaseModel):
     
     class Config:
         model_config = {"from_attributes": True}
-
+        
 class User(UserBase):
     id: int
     role: str

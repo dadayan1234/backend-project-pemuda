@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
-from typing import List
+from typing import Dict, List
 from datetime import datetime, timedelta
 from core.database import get_db, admin_required
 from core.security import verify_token
@@ -11,7 +11,7 @@ from ..models.notification import Notification
 
 router = APIRouter()
 
-@router.get("/", response_model=List[MemberResponse])
+@router.get("/", response_model=Dict[str, List[MemberResponse]])
 @admin_required()
 async def get_members(
     current_user: User = Depends(verify_token),
@@ -19,7 +19,7 @@ async def get_members(
 ):
     members = db.query(Member).all()
     
-    return [MemberResponse.model_validate(member.__dict__) for member in members]
+    return {"members": [MemberResponse.model_validate(member.__dict__) for member in members]}
 
 
 
