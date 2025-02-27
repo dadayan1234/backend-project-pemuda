@@ -43,10 +43,10 @@ async def get_news_item(
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    news_item = db.query(News).filter(News.id == news_id).first()
-    if not news_item:
+    if news_item := db.query(News).filter(News.id == news_id).first():
+        return news_item
+    else:
         raise HTTPException(status_code=404, detail="News not found")
-    return news_item
 
 @router.delete("/{news_id}")
 @admin_required()
