@@ -29,8 +29,13 @@ async def get_news(
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    news_items = db.query(News).order_by(News.date.desc()).offset(skip).limit(limit).all()
-    return news_items
+    return (
+        db.query(News)
+        .order_by(News.date.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 @router.get("/{news_id}", response_model=NewsSchema)
 async def get_news_item(
