@@ -59,3 +59,51 @@ async def create_biodata(
         position=new_member.position
     )
 
+@router.put("/biodata/", response_model=MemberResponse)
+async def update_biodata(
+    biodata: MemberUpdate,
+    current_user: User = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    # Cari member berdasarkan user_id
+    member = db.query(Member).filter(Member.user_id == current_user.id).first()
+    
+    if not member:
+        raise HTTPException(status_code=200, detail="Member not found")
+    
+    # Pastikan hanya pemilik biodata yang bisa mengedit atau admin
+    if current_user.role != "Admin" and member.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this profile")
+    
+    # Update biodata
+    for key, value in biodata.dict(exclude_unset=True).items():
+        setattr(member, key, value)
+    
+    db.commit()
+    db.refresh(member)
+    
+    return MemberResponse(
+        id=member.id,
+        full_name=member.full_name,
+        division=member.division,
+        position=member.position
+    )
+
+@router.delete("/user/{user_id}")
+@admin_required()
+async def delete_user(
+    user_id: int,
+    current_user: User = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    # Cari user berdasarkan ID
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Hapus user (akan otomatis menghapus data Member jika ada karena relasi)
+    db.delete(user)
+    db.commit()
+    
+    return {"message": "User deleted successfully"}

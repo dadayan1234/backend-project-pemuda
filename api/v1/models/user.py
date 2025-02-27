@@ -32,3 +32,5 @@ class Member(Base):
     user = relationship("User", back_populates="member_info")
     attendances = relationship("Attendance", back_populates="member")
     feedback = relationship("Feedback", back_populates="member")
+    
+    
