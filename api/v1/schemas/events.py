@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime, time
 from typing import List, Optional
 
@@ -32,7 +32,7 @@ class EventResponse(EventBase):
     created_by: int
     created_at: datetime
     updated_at: datetime
-    photos: List[EventPhotoResponse] = []
+    photos: List[EventPhotoResponse] = Field(default_factory=list) 
 
     class Config:
         orm_mode = True
