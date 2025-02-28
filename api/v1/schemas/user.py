@@ -14,6 +14,8 @@ class UserLogin(UserBase):
 
 class MemberCreate(BaseModel):
     full_name: str
+    email : str
+    phone_number: str
     birth_date: datetime
     division: str
     address: str
@@ -21,6 +23,8 @@ class MemberCreate(BaseModel):
 
 class MemberUpdate(BaseModel):
     full_name: Optional[str] = None
+    email : Optional[str] = None
+    phone_number: Optional[str] = None
     division: Optional[str] = None
     birth_date: datetime
     address: Optional[str] = None

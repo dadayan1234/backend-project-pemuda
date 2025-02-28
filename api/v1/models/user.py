@@ -23,6 +23,8 @@ class Member(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     full_name = Column(String(255))
     birth_date = Column(DateTime)
+    email = Column(String(255))
+    phone_number = Column(String(255))
     division = Column(String(255))
     address = Column(Text)
     position = Column(String(255))

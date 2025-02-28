@@ -10,14 +10,13 @@ class News(Base):
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
     date = Column(DateTime, nullable=False)
-    photo_url = Column(String(255))
     created_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
-    photos = relationship("EventPhoto", back_populates="news")
+    photos_url = relationship("NewsPhoto", back_populates="news", cascade="all, delete-orphan")
 
-class EventPhoto(Base):
+class NewsPhoto(Base):
     __tablename__ = "news_photos"
 
     id = Column(Integer, primary_key=True, index=True)

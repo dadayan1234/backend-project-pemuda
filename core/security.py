@@ -4,14 +4,18 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from core.database import SessionLocal
 from api.v1.models.user import User
+from dotenv import load_dotenv
+import os
 
-SECRET_KEY = "your-secret-key"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 120
+load_dotenv()  # Load environment variables from .env file
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token")
 
-def create_access_token(data: dict):
+def create_access_token(data: dict):  # sourcery skip: simplify-dictionary-update
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=ACCESS_TOKEN_EXPIRE_MINUTES

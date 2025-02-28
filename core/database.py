@@ -4,7 +4,12 @@ from sqlalchemy.orm import sessionmaker
 from functools import wraps
 from fastapi import HTTPException
 
-SQLALCHEMY_DATABASE_URL = "mysql+pymysql://root:@localhost/project_pemuda"
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+SQLALCHEMY_DATABASE_URL = os.getenv("SQLALCHEMY_DATABASE_URL")
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -18,6 +23,14 @@ def get_db():
         db.close()
 
 def admin_required():
+    """
+    The `admin_required` function is a decorator in Python that restricts access to functions based on
+    the role of the current user.
+    :return: The `admin_required` function is returning a decorator function that checks if the current
+    user has the role of "Admin". If the user is not an admin, it raises an HTTPException with a status
+    code of 403 and a detail message indicating that admin access is required. If the user is an admin,
+    it calls the original function that the decorator is applied to.
+    """
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
