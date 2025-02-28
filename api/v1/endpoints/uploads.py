@@ -35,6 +35,7 @@ async def save_multiple_images(
 
         # Simpan file ke dalam folder news/{YYYY-MM-DD}/ atau events/{YYYY-MM-DD}/
         file_url = await file_handler.save_file(file, f"{entity_type}/{today_date}", new_filename)
+        file_url = file_url.replace("\\", "/")  # Pastikan selalu menggunakan '/'
 
         # Simpan ke database
         if entity_type == "news":
@@ -82,7 +83,6 @@ async def upload_event_photos(
     uploaded_urls = await save_multiple_images(event_id, files, "events", db)
     return {"uploaded_files": uploaded_urls}
 
-
 @router.post("/finances/{finance_id}/document")
 @admin_required()
 async def upload_finance_document(
@@ -94,9 +94,10 @@ async def upload_finance_document(
     finance = db.query(Finance).filter(Finance.id == finance_id).first()
     if not finance:
         raise HTTPException(status_code=404, detail="Finance record not found")
-        
+
     file_url = await file_handler.save_file(file, f"finances/{finance_id}")
+    file_url = file_url.replace("\\", "/")  # Pastikan selalu menggunakan '/'
     finance.document_url = file_url
     db.commit()
-    
+
     return {"file_url": file_url}

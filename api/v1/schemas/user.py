@@ -45,4 +45,4 @@ class User(UserBase):
     member_info: Optional[MemberResponse] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True

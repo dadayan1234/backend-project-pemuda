@@ -2,6 +2,8 @@ from pydantic import BaseModel, HttpUrl
 from typing import Optional
 from datetime import date, datetime
 
+from sqlalchemy import Date
+
 class MeetingMinutesBase(BaseModel):
     title: str
     description: Optional[str] = None
@@ -15,7 +17,7 @@ class MeetingMinutesCreate(MeetingMinutesBase):
 class MeetingMinutesUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    date: Optional[datetime.date] = None
+    date: Optional[Date] = None
     document_url: Optional[HttpUrl] = None
     event_id: Optional[int] = None
     
@@ -29,5 +31,5 @@ class MeetingMinutesResponse(MeetingMinutesBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
         arbitrary_types_allowed = True

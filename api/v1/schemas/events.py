@@ -25,7 +25,7 @@ class EventPhotoResponse(BaseModel):
     uploaded_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class EventResponse(EventBase):
     id: int
@@ -35,7 +35,7 @@ class EventResponse(EventBase):
     photos: List[EventPhotoResponse] = Field(default_factory=list) 
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class AttendanceCreate(BaseModel):
     member_id: int
@@ -56,7 +56,7 @@ class AttendanceResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
         
 class EventSearch(BaseModel):
     title: str
