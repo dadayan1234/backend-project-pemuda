@@ -14,9 +14,8 @@ from ..models.notification import Notification
 
 router = APIRouter()
 
-async def create_notification(db: Session, user_id: int, title: str, content: str):
+async def create_notification(db: Session, title: str, content: str):
     notification = Notification(
-        user_id=user_id,
         title=title,
         content=content
     )
@@ -54,16 +53,15 @@ async def get_events(
     limit: int = 10,
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
-):
-    return (
-        db.query(Event)
+):  # sourcery skip: inline-immediately-returned-variable
+    events = (db.query(Event)
         .order_by(Event.date.desc())
         .offset(skip)
         .limit(limit)
-        .all()
-    )
-    
-@router.get("/", response_model=List[EventSearch])
+        .all())
+    return events
+@router.get("/search", response_model=List[EventSearch])
+@admin_required()
 async def search_events(
     title: str = None,
     description: str = None,

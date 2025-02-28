@@ -24,4 +24,4 @@ class NewsPhoto(Base):
     photo_url = Column(String(255), nullable=False)
     uploaded_at = Column(DateTime, default=datetime.now)
 
-    news = relationship("News", back_populates="photos")
+    news = relationship("News", back_populates="photos_url")
