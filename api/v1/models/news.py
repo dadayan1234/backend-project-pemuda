@@ -15,4 +15,14 @@ class News(Base):
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
-    # user = relationship("User", back_populates="news")
+    photos = relationship("EventPhoto", back_populates="news")
+
+class EventPhoto(Base):
+    __tablename__ = "news_photos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    news_id = Column(Integer, ForeignKey("news.id"))
+    photo_url = Column(String(255), nullable=False)
+    uploaded_at = Column(DateTime, default=datetime.now)
+
+    news = relationship("News", back_populates="photos")

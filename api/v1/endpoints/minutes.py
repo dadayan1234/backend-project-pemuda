@@ -7,10 +7,11 @@ from ..schemas.minutes import MeetingMinutesCreate, MeetingMinutesUpdate, Meetin
 from core.database import get_db, admin_required
 from core.security import verify_token  # Sesuaikan dengan sistem autentikasi Anda
 
-router = APIRouter(prefix="/meeting_minutes", tags=["Meeting Minutes"])
+router = APIRouter()
 
 # ✅ Create Meeting Minutes
 @router.post("/", response_model=MeetingMinutesResponse)
+@admin_required()
 async def create_meeting_minutes(
     meeting_minutes: MeetingMinutesCreate,
     current_user: int = Depends(verify_token),
@@ -29,6 +30,7 @@ async def create_meeting_minutes(
 
 # ✅ Get All Meeting Minutes
 @router.get("/", response_model=List[MeetingMinutesResponse])
+@admin_required()
 async def get_meeting_minutes(db: Session = Depends(get_db)):
     return db.query(MeetingMinutes).all()
 
@@ -46,6 +48,7 @@ async def get_meeting_minutes_by_id(minutes_id: int, db: Session = Depends(get_d
 
 # ✅ Update Meeting Minutes
 @router.put("/{minutes_id}", response_model=MeetingMinutesResponse)
+@admin_required()
 async def update_meeting_minutes(
     minutes_id: int,
     update_data: MeetingMinutesUpdate,
@@ -70,6 +73,7 @@ async def update_meeting_minutes(
 
 # ✅ Delete Meeting Minutes
 @router.delete("/{minutes_id}")
+@admin_required()
 async def delete_meeting_minutes(minutes_id: int, db: Session = Depends(get_db)):
     meeting = db.query(MeetingMinutes).filter(MeetingMinutes.id == minutes_id).first()
     if not meeting:

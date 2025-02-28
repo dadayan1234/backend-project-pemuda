@@ -22,6 +22,7 @@ class MemberCreate(BaseModel):
 class MemberUpdate(BaseModel):
     full_name: Optional[str] = None
     division: Optional[str] = None
+    birth_date: datetime
     address: Optional[str] = None
     position: Optional[str] = None
 

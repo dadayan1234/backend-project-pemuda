@@ -46,16 +46,3 @@ class Attendance(Base):
     event = relationship("Event", back_populates="attendances")
     member = relationship("Member", back_populates="attendances")
     
-# class EventSearch(Base):
-#     __tablename__ = "events"
-
-#     id = Column(Integer, primary_key=True, index=True)
-#     event_id = Column(Integer, ForeignKey("events.id"))
-#     title = Column(String(255), nullable=False)
-#     description = Column(Text, nullable=False)
-#     date = Column(DateTime, nullable=False)
-#     time = Column(Time, nullable=False)
-#     location = Column(String(255), nullable=False)
-#     created_by = Column(Integer, ForeignKey("users.id"))
-#     created_at = Column(DateTime, default=datetime.utcnow)
-#     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
