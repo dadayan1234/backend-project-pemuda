@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from api.v1.endpoints import (
     auth, events, finance, member,
@@ -6,6 +6,8 @@ from api.v1.endpoints import (
     uploads, notification
 )
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from starlette.status import HTTP_401_UNAUTHORIZED
 
 app = FastAPI(
     title="Business Process API",
@@ -44,6 +46,23 @@ app.include_router(news.router, prefix="/api/v1/news", tags=["news"])
 app.include_router(minutes.router, prefix="/api/v1/meeting-minutes", tags=["meeting-minutes"])
 app.include_router(uploads.router, prefix="/api/v1/uploads", tags=["uploads"])
 app.include_router(notification.router, prefix="/api/v1/notifications", tags=["notifications"])
+
+security = HTTPBasic()
+
+def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = "admin"
+    correct_password = "admin"
+
+    if credentials.username != correct_username or credentials.password != correct_password:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+@app.get("/docs", dependencies=[Depends(authenticate)])
+async def get_docs():
+    return {"message": "Welcome to protected API docs"}
 
 if __name__ == "__main__":
     import uvicorn
