@@ -24,14 +24,14 @@ async def save_multiple_images(
     uploaded_urls = []
     today_date = datetime.now().strftime("%Y-%m-%d")  # Format YYYY-MM-DD
 
-    for file in files:
+    for idx, file in enumerate(files):
         if not file.content_type.startswith('image/'):
             raise HTTPException(status_code=400, detail="File must be an image")
 
-        # Buat nama file berdasarkan timestamp
-        timestamp = int(datetime.now().timestamp())
+        # Gunakan timestamp dalam milidetik dan index loop untuk memastikan nama unik
+        timestamp = int(datetime.now().timestamp() * 1000)  
         file_extension = os.path.splitext(file.filename)[1]
-        new_filename = f"{timestamp}{file_extension}"
+        new_filename = f"{timestamp}_{idx}{file_extension}"  # Nama unik dengan indeks
 
         # Simpan file ke dalam folder news/{YYYY-MM-DD}/ atau events/{YYYY-MM-DD}/
         file_url = await file_handler.save_file(file, f"{entity_type}/{today_date}", new_filename)
@@ -50,6 +50,7 @@ async def save_multiple_images(
 
     db.commit()
     return uploaded_urls
+
 
 @router.post("/news/{news_id}/photos")
 @admin_required()

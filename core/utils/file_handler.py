@@ -25,3 +25,15 @@ class FileHandler:
 
         # Pastikan path dalam format Unix-style (untuk URL)
         return f"/{file_path.as_posix()}"
+    
+    
+    @staticmethod
+    def delete_image(file_url: str):
+        """Hapus file dari sistem jika file_url adalah path lokal."""
+        base_upload_dir = "uploads/events/"  # Sesuaikan dengan direktori penyimpanan
+        
+        # Konversi URL ke path file jika perlu
+        file_path = os.path.join(base_upload_dir, os.path.basename(file_url))
+        
+        if os.path.exists(file_path):
+            os.remove(file_path)

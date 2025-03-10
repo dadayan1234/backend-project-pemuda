@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from ..models.minutes import MeetingMinutes
 from ..models.events import Event  # Import the Event model
-from ..schemas.minutes import MeetingMinutesCreate, MeetingMinutesUpdate, MeetingMinutesResponse
+from ..schemas.minutes import MeetingMinutesBase, MeetingMinutesUpdate, MeetingMinutesResponse
 from core.database import get_db, admin_required
 from core.security import verify_token  # Sesuaikan dengan sistem autentikasi Anda
 
@@ -13,7 +13,7 @@ router = APIRouter()
 @router.post("/", response_model=MeetingMinutesResponse)
 @admin_required()
 async def create_meeting_minutes(
-    meeting_minutes: MeetingMinutesCreate,
+    meeting_minutes: MeetingMinutesBase,
     current_user: int = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
@@ -22,7 +22,7 @@ async def create_meeting_minutes(
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
-    new_minutes = MeetingMinutes(**meeting_minutes.dict(), created_by=current_user)
+    new_minutes = MeetingMinutes(**meeting_minutes.dict())
     db.add(new_minutes)
     db.commit()
     db.refresh(new_minutes)

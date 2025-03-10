@@ -11,6 +11,8 @@ from ..schemas.events import (
     AttendanceCreate, AttendanceUpdate, AttendanceResponse, EventSearch
 )
 from ..models.notification import Notification
+from ..models.events import EventPhoto  # Model yang menyimpan foto event
+from core.utils.file_handler import FileHandler  # Fungsi untuk menghapus file
 
 router = APIRouter()
 
@@ -124,13 +126,26 @@ async def delete_event(
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
+    # Ambil semua foto terkait event
+    photos = db.query(EventPhoto).filter(EventPhoto.event_id == event_id).all()
+
+    # Hapus file dari penyimpanan
+    for photo in photos:
+        file_handler = FileHandler()
+        file_handler.delete_image(photo.photo_url) # Pastikan delete_image menangani lokasi file dengan benar
+        db.delete(photo)  # Hapus referensi di database
+
+    db.commit()  # Commit setelah menghapus semua foto
+
+    # Hapus event setelah semua foto dihapus
     db.delete(event)
     db.commit()
-    return {"message": "Event deleted"}
+
+    return {"message": "Event and associated photos deleted"}
 
 @router.post("/{event_id}/attendance", response_model=List[AttendanceResponse])
 @admin_required()
-async def create_attendance(
+async def create_or_update_attendance(
     event_id: int,
     attendances: List[AttendanceCreate],
     current_user: User = Depends(verify_token),
@@ -140,17 +155,33 @@ async def create_attendance(
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
-    created_attendances = []
-    for attendance in attendances:
-        db_attendance = Attendance(
-            event_id=event_id,
-            **attendance.dict()
-        )
-        db.add(db_attendance)
-        created_attendances.append(db_attendance)
+    updated_attendances = []
 
-    db.commit()
-    return created_attendances
+    for attendance in attendances:
+        existing_attendance = db.query(Attendance).filter(
+            Attendance.event_id == event_id,
+            Attendance.member_id == attendance.member_id
+        ).first()
+
+        if existing_attendance:
+            # Jika sudah ada, update (PUT)
+            for field, value in attendance.dict(exclude_unset=True).items():
+                setattr(existing_attendance, field, value)
+            db.commit()
+            db.refresh(existing_attendance)
+            updated_attendances.append(existing_attendance)
+        else:
+            # Jika belum ada, tambahkan baru (POST)
+            new_attendance = Attendance(
+                event_id=event_id,
+                **attendance.dict()
+            )
+            db.add(new_attendance)
+            db.commit()
+            db.refresh(new_attendance)
+            updated_attendances.append(new_attendance)
+
+    return updated_attendances
 
 @router.put("/{event_id}/attendance/{member_id}", response_model=AttendanceResponse)
 @admin_required()
@@ -176,3 +207,11 @@ async def update_attendance(
     db.commit()
     db.refresh(db_attendance)
     return db_attendance
+
+@router.get("/{event_id}/attendance", response_model=List[AttendanceResponse])
+async def get_attendance(
+    event_id: int,
+    current_user: User = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    return db.query(Attendance).filter(Attendance.event_id == event_id).all()
