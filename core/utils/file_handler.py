@@ -37,3 +37,14 @@ class FileHandler:
         
         if os.path.exists(file_path):
             os.remove(file_path)
+            
+    @staticmethod
+    def delete_image(file_url: str):
+        """Hapus file dari sistem penyimpanan jika file_url ada di folder uploads."""
+        if file_url.startswith("/"):
+            file_url = file_url[1:]  # Hilangkan '/' di awal agar cocok dengan path lokal
+        
+        file_path = Path(file_url)
+
+        if file_path.exists():
+            os.remove(file_path)

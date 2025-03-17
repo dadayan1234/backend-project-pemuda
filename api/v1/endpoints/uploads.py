@@ -14,30 +14,22 @@ from ..models.finance import Finance
 router = APIRouter()
 file_handler = FileHandler()
 
-async def save_multiple_images(
-    entity_id: int,
-    files: List[UploadFile],
-    entity_type: str,
-    db: Session
-):
+async def save_multiple_images(entity_id: int, files: List[UploadFile], entity_type: str, db: Session):
     """Helper function untuk menyimpan multiple gambar."""
     uploaded_urls = []
-    today_date = datetime.now().strftime("%Y-%m-%d")  # Format YYYY-MM-DD
+    today_date = datetime.now().strftime("%Y-%m-%d")
 
     for idx, file in enumerate(files):
         if not file.content_type.startswith('image/'):
             raise HTTPException(status_code=400, detail="File must be an image")
 
-        # Gunakan timestamp dalam milidetik dan index loop untuk memastikan nama unik
         timestamp = int(datetime.now().timestamp() * 1000)  
         file_extension = os.path.splitext(file.filename)[1]
-        new_filename = f"{timestamp}_{idx}{file_extension}"  # Nama unik dengan indeks
-
-        # Simpan file ke dalam folder news/{YYYY-MM-DD}/ atau events/{YYYY-MM-DD}/
+        new_filename = f"{timestamp}_{idx}{file_extension}"
+        
         file_url = await file_handler.save_file(file, f"{entity_type}/{today_date}", new_filename)
-        file_url = file_url.replace("\\", "/")  # Pastikan selalu menggunakan '/'
+        file_url = file_url.replace("\\", "/")
 
-        # Simpan ke database
         if entity_type == "news":
             photo = NewsPhoto(news_id=entity_id, photo_url=file_url)
         elif entity_type == "events":
@@ -102,3 +94,118 @@ async def upload_finance_document(
     db.commit()
 
     return {"file_url": file_url}
+
+@router.put("/news/photos/{photo_id}")
+@admin_required()
+async def edit_news_photo(
+    photo_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    """Edit an existing news photo."""
+    photo = db.query(NewsPhoto).filter(NewsPhoto.id == photo_id).first()
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    # Hapus file lama
+    file_handler.delete_image(photo.photo_url)
+
+    # Simpan file baru
+    file_url = await file_handler.save_file(file, "news", file.filename)
+    file_url = file_url.replace("\\", "/")
+
+    photo.photo_url = file_url
+    db.commit()
+    return {"updated_file": file_url}
+
+@router.delete("/news/photos/{photo_id}")
+@admin_required()
+async def delete_news_photo(
+    photo_id: int,
+    current_user: User = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    """Delete a news photo."""
+    photo = db.query(NewsPhoto).filter(NewsPhoto.id == photo_id).first()
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    # Hapus file dari sistem
+    file_handler.delete_image(photo.photo_url)
+
+    # Hapus dari database
+    db.delete(photo)
+    db.commit()
+    return {"message": "Photo deleted successfully"}
+
+
+@router.put("/events/photos/{photo_id}")
+@admin_required()
+async def edit_event_photo(
+    photo_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    """Edit an existing event photo."""
+    photo = db.query(EventPhoto).filter(EventPhoto.id == photo_id).first()
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    
+    file_url = await file_handler.save_file(file, "events")
+    file_url = file_url.replace("\\", "/")
+    photo.photo_url = file_url
+    db.commit()
+    return {"updated_file": file_url}
+
+@router.delete("/events/photos/{photo_id}")
+@admin_required()
+async def delete_event_photo(
+    photo_id: int,
+    current_user: User = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    """Delete an event photo."""
+    photo = db.query(EventPhoto).filter(EventPhoto.id == photo_id).first()
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    
+    db.delete(photo)
+    db.commit()
+    return {"message": "Photo deleted successfully"}
+
+@router.put("/finances/{finance_id}/document")
+@admin_required()
+async def edit_finance_document(
+    finance_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    """Edit an existing finance document."""
+    finance = db.query(Finance).filter(Finance.id == finance_id).first()
+    if not finance:
+        raise HTTPException(status_code=404, detail="Finance record not found")
+    
+    file_url = await file_handler.save_file(file, f"finances/{finance_id}")
+    file_url = file_url.replace("\\", "/")
+    finance.document_url = file_url
+    db.commit()
+    return {"updated_file": file_url}
+
+@router.delete("/finances/{finance_id}/document")
+@admin_required()
+async def delete_finance_document(
+    finance_id: int,
+    current_user: User = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    """Delete a finance document."""
+    finance = db.query(Finance).filter(Finance.id == finance_id).first()
+    if not finance:
+        raise HTTPException(status_code=404, detail="Finance record not found")
+    
+    finance.document_url = None
+    db.commit()
+    return {"message": "Document deleted successfully"}
