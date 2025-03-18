@@ -25,6 +25,10 @@ app = FastAPI(
         {"name": "notifications", "description": "Notification management"}
     ]
 )
+# Ensure the uploads directory exists
+if not os.path.exists("uploads"):
+    os.makedirs("uploads")
+
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # CORS middleware
@@ -48,21 +52,6 @@ app.include_router(uploads.router, prefix="/api/v1/uploads", tags=["uploads"])
 app.include_router(notification.router, prefix="/api/v1/notifications", tags=["notifications"])
 
 security = HTTPBasic()
-
-def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
-    correct_username = "admin"
-    correct_password = "admin"
-
-    if credentials.username != correct_username or credentials.password != correct_password:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-
-@app.get("/docs", dependencies=[Depends(authenticate)])
-async def get_docs():
-    return {"message": "Welcome to protected API docs"}
 
 if __name__ == "__main__":
     import uvicorn
