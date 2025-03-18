@@ -8,6 +8,7 @@ from api.v1.endpoints import (
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from starlette.status import HTTP_401_UNAUTHORIZED
+import os
 
 app = FastAPI(
     title="Business Process API",
