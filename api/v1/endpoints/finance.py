@@ -147,39 +147,65 @@ async def update_finance(
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
+    # Dapatkan transaksi yang akan diupdate
     db_finance = db.query(Finance).filter(Finance.id == finance_id).first()
     if not db_finance:
         raise HTTPException(status_code=404, detail="Finance record not found")
 
-    # Hitung selisih perubahan
+    # Simpan nilai lama untuk perhitungan
     old_amount = db_finance.amount
-    new_amount = finance_update.amount or old_amount
     old_category = db_finance.category
-    new_category = finance_update.category or old_category
+    old_date = db_finance.date
 
-    last_balance = db.query(Finance.balance).order_by(Finance.date.desc()).first()
-    last_balance = last_balance[0] if last_balance else Decimal('0')
+    # Dapatkan nilai baru dari request
+    new_amount = finance_update.amount if finance_update.amount is not None else old_amount
+    new_category = finance_update.category if finance_update.category is not None else old_category
+    new_date = finance_update.date if finance_update.date is not None else old_date
 
-    # Hitung saldo baru berdasarkan perubahan kategori dan jumlah
-    if old_category == "Pemasukan":
-        last_balance -= old_amount
-    else:
-        last_balance += old_amount
+    # 1. Dapatkan transaksi sebelumnya (untuk menghitung balance_before)
+    prev_transaction = db.query(Finance).filter(
+        (Finance.date < old_date) |
+        ((Finance.date == old_date) & (Finance.id < db_finance.id))
+    ).order_by(Finance.date.desc(), Finance.id.desc()).first()
 
-    if new_category == "Pemasukan":
-        new_balance = last_balance + new_amount
-    else:
-        new_balance = last_balance - new_amount
+    balance_before = prev_transaction.balance_after if prev_transaction else Decimal('0')
 
-    # Perbarui transaksi
+    # 2. Hitung ulang saldo untuk transaksi ini dan semua transaksi setelahnya
+    transactions_to_update = db.query(Finance).filter(
+        (Finance.date > old_date) |
+        ((Finance.date == old_date) & (Finance.id >= db_finance.id))
+    ).order_by(Finance.date.asc(), Finance.id.asc()).all()
+
+    # 3. Update transaksi ini
     for field, value in finance_update.dict(exclude_unset=True).items():
         setattr(db_finance, field, value)
 
-    db_finance.balance = new_balance
+    # Hitung balance_after baru untuk transaksi ini
+    if new_category == "Pemasukan":
+        db_finance.balance_after = balance_before + new_amount
+    else:
+        db_finance.balance_after = balance_before - new_amount
+
+    current_balance = db_finance.balance_after
+
+    # 4. Update semua transaksi setelahnya
+    for transaction in transactions_to_update[1:]:  # Skip transaksi pertama (yang sedang diupdate)
+        if transaction.category == "Pemasukan":
+            current_balance += transaction.amount
+        else:
+            current_balance -= transaction.amount
+        
+        transaction.balance_after = current_balance
 
     db.commit()
     db.refresh(db_finance)
-    return db_finance
+
+    # Siapkan response dengan balance_before
+    response = FinanceResponse(
+        **db_finance.__dict__,
+        balance_before=balance_before
+    )
+    return response
 
 
 @router.delete("/{finance_id}")
