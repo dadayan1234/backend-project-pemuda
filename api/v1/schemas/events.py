@@ -8,6 +8,7 @@ class EventBase(BaseModel):
     date: datetime
     time: time
     location: str
+    status: str = "akan datang"  # default status
 
 class EventCreate(EventBase):
     pass
@@ -18,6 +19,7 @@ class EventUpdate(BaseModel):
     date: Optional[datetime] = None
     time: Optional[time] = None # type: ignore
     location: Optional[str] = None
+    status: Optional[str] = None
 
 class EventPhotoResponse(BaseModel):
     id: int

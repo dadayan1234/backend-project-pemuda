@@ -43,3 +43,14 @@ async def mark_notification_as_read(
     # notification.is_read = True
     db.commit()
     return {"status": "success"}
+
+@router.post("/send_notification")
+async def send_notification(
+    title: str,
+    content: str,
+    token: str,  # Token dari Android
+    db: Session = Depends(get_db)
+):
+    create_notification(db, title, content)  # Simpan ke database
+    send_push_notification(token, title, content)  # Kirim ke Android
+    return {"status": "Notification sent"}

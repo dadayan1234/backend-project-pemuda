@@ -15,6 +15,7 @@ class Event(Base):
     created_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    status = Column(Enum("akan datang", "selesai"), nullable=False)
 
     # creator = relationship("User", back_populates="created_events")
     photos = relationship("EventPhoto", back_populates="event", cascade="all, delete-orphan")
