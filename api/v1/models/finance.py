@@ -11,10 +11,8 @@ class Finance(Base):
     category = Column(Enum("Pemasukan", "Pengeluaran"), nullable=False)
     date = Column(DateTime, nullable=False)
     description = Column(Text, nullable=False)
-    balance = Column(DECIMAL(10, 2), nullable=False)
+    balance_after = Column(DECIMAL(10, 2), nullable=False, comment="Saldo setelah transaksi ini")
     document_url = Column(String(255))
     created_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # creator = relationship("User", back_populates="created_finances")
