@@ -4,26 +4,27 @@ from typing import List, Optional
 
 class NewsPhotoResponse(BaseModel):
     id: int
-    photos_url: str
+    photo_url: str
     uploaded_at: datetime
-
-    class Config:
-        from_attributes = True
 
 class NewsBase(BaseModel):
     title: str
     description: str
     date: datetime
+    is_published: bool = True
 
 class NewsCreate(NewsBase):
-    photos_url: Optional[List[str]] = []
+    pass
 
-class News(NewsBase):
+class NewsUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    date: Optional[datetime] = None
+    is_published: Optional[bool] = None
+
+class NewsResponse(NewsBase):
     id: int
     created_by: int
     created_at: datetime
     updated_at: datetime
-    photos_url: List[NewsPhotoResponse] = []
-
-    class Config:
-        from_attributes = True
+    photos: List[NewsPhotoResponse] = []

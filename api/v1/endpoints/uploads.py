@@ -12,6 +12,9 @@ from ..models.user import User
 from ..models.finance import Finance
 
 router = APIRouter()
+
+def get_file_handler():
+    return file_handler
 file_handler = FileHandler()
 
 async def save_multiple_images(entity_id: int, files: List[UploadFile], entity_type: str, db: Session):
@@ -209,3 +212,7 @@ async def delete_finance_document(
     finance.document_url = None
     db.commit()
     return {"message": "Document deleted successfully"}
+
+# Add this at the bottom of uploads.py
+def get_save_multiple_images():
+    return save_multiple_images
