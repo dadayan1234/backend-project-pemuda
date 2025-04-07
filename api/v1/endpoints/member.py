@@ -39,7 +39,7 @@ async def create_biodata(
     # Buat entri baru di tabel Member
     new_member = Member(
         user_id=current_user.id,
-        emial=biodata.email,
+        email=biodata.email,
         full_name=biodata.full_name,
         birth_date=biodata.birth_date,
         division=biodata.division,
