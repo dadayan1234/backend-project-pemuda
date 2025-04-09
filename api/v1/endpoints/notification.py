@@ -1,21 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from typing import Dict
+import asyncio
+import json
 from core.security import verify_token
 from core.database import get_db
 from ..models.notification import Notification
 from ..models.user import User
 from ..schemas.notification import NotificationResponse, NotificationCreate
-from typing import Dict
-import asyncio
-import json
 
 router = APIRouter()
-
-# In-memory queue untuk masing-masing user
 notification_queues: Dict[int, asyncio.Queue] = {}
 
-# Generator SSE untuk setiap client
+# --- SSE: Event stream per user
 async def notification_event_generator(user_id: int):
     queue = asyncio.Queue()
     notification_queues[user_id] = queue
@@ -24,10 +22,8 @@ async def notification_event_generator(user_id: int):
             data = await queue.get()
             yield f"data: {data}\n\n"
     except asyncio.CancelledError:
-        # Hapus queue jika client disconnect
         notification_queues.pop(user_id, None)
 
-# Endpoint SSE - real-time stream
 @router.get("/sse")
 async def stream_notifications(
     request: Request,
@@ -38,7 +34,45 @@ async def stream_notifications(
         media_type="text/event-stream"
     )
 
-# Endpoint untuk mengambil semua notifikasi user
+# --- Reusable function (dipakai di route lain, contoh: events.py)
+async def create_notification_db(db: Session, title: str, content: str, user_id: int):
+    notification = Notification(
+        title=title,
+        content=content,
+        user_id=user_id
+    )
+    db.add(notification)
+    db.commit()
+    db.refresh(notification)
+
+    # Push ke SSE jika user sedang nyambung
+    if queue := notification_queues.get(user_id):
+        data = json.dumps({
+            "id": notification.id,
+            "title": notification.title,
+            "content": notification.content,
+            "created_at": notification.created_at.isoformat(),
+            "is_read": notification.is_read
+        })
+        await queue.put(data)
+
+    return notification
+
+# --- Endpoint untuk membuat notifikasi
+@router.post("/", response_model=NotificationResponse)
+async def create_notification(
+    payload: NotificationCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(verify_token),
+):
+    return await create_notification_db(
+        db=db,
+        title=payload.title,
+        content=payload.content,
+        user_id=payload.user_id
+    )
+
+# --- Endpoint untuk get semua notifikasi user
 @router.get("/", response_model=list[NotificationResponse])
 async def get_notifications(
     current_user: User = Depends(verify_token),
@@ -51,7 +85,7 @@ async def get_notifications(
         .all()
     )
 
-# Endpoint untuk menandai notifikasi sudah dibaca
+# --- Endpoint untuk menandai notifikasi sudah dibaca
 @router.post("/{notification_id}/read", response_model=NotificationResponse)
 async def mark_notification_as_read(
     notification_id: int,
@@ -69,33 +103,5 @@ async def mark_notification_as_read(
     notification.is_read = True
     db.commit()
     db.refresh(notification)
-
-    return notification
-
-# Endpoint untuk membuat/push notifikasi baru ke user tertentu
-@router.post("/", response_model=NotificationResponse)
-async def create_notification(
-    payload: NotificationCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(verify_token),
-):
-    notification = Notification(
-        title=payload.title,
-        content=payload.content,
-        user_id=payload.user_id
-    )
-    db.add(notification)
-    db.commit()
-    db.refresh(notification)
-
-    if queue := notification_queues.get(payload.user_id):
-        data = json.dumps({
-            "id": notification.id,
-            "title": notification.title,
-            "content": notification.content,
-            "created_at": notification.created_at.isoformat() if hasattr(notification.created_at, "isoformat") else str(notification.created_at),
-            "is_read": notification.is_read
-        })
-        await queue.put(data)
 
     return notification
