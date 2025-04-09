@@ -13,17 +13,10 @@ from ..schemas.events import (
 from ..models.notification import Notification
 from ..models.events import EventPhoto  # Model yang menyimpan foto event
 from core.utils.file_handler import FileHandler  # Fungsi untuk menghapus file
+from .notification import create_notification_db
 
 router = APIRouter()
 
-async def create_notification(db: Session, title: str, content: str):
-    notification = Notification(
-        title=title,
-        content=content
-    )
-    db.add(notification)
-    db.commit()
-    
 @router.post("/", response_model=EventResponse)
 @admin_required()
 async def create_event(
@@ -37,15 +30,16 @@ async def create_event(
     db.commit()
     db.refresh(db_event)
 
-    # Send notification to all members
-    # members = db.query(User).filter(User.role == "Member").all()
-    # for member in members:
-    background_tasks.add_task(
-        create_notification,
-        db=db,
-        title=f"New Event: {event.title}",
-        content=f"A new event has been scheduled for {event.date}"
-    )
+    # Notifikasi ke semua member
+    members = db.query(User).filter(User.role == "Member").all()
+    for member in members:
+        background_tasks.add_task(
+            create_notification_db,
+            db=db,
+            title=f"New Event: {event.title}",
+            content=f"A new event has been scheduled for {event.date}",
+            user_id=member.id
+        )
 
     return db_event
 
@@ -101,6 +95,7 @@ async def get_event(
 async def update_event(
     event_id: int,
     event_update: EventUpdate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
@@ -113,6 +108,19 @@ async def update_event(
 
     db.commit()
     db.refresh(db_event)
+
+    # Kirim notifikasi jika tanggal diubah
+    if event_update.date:
+        members = db.query(User).filter(User.role == "Member").all()
+        for member in members:
+            background_tasks.add_task(
+                create_notification_db,
+                db=db,
+                title=f"Event Rescheduled: {db_event.title}",
+                content=f"The event has been moved to {db_event.date}",
+                user_id=member.id
+            )
+
     return db_event
 
 @router.delete("/{event_id}")
@@ -158,12 +166,14 @@ async def create_or_update_attendance(
     updated_attendances = []
 
     for attendance in attendances:
-        existing_attendance = db.query(Attendance).filter(
-            Attendance.event_id == event_id,
-            Attendance.member_id == attendance.member_id
-        ).first()
-
-        if existing_attendance:
+        if (
+            existing_attendance := db.query(Attendance)
+            .filter(
+                Attendance.event_id == event_id,
+                Attendance.member_id == attendance.member_id,
+            )
+            .first()
+        ):
             # Jika sudah ada, update (PUT)
             for field, value in attendance.dict(exclude_unset=True).items():
                 setattr(existing_attendance, field, value)
