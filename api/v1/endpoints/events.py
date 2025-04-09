@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import List
 from datetime import datetime, timedelta
 from core.database import get_db, admin_required
@@ -59,24 +60,29 @@ async def get_events(
 @router.get("/search", response_model=List[EventSearch])
 @admin_required()
 async def search_events(
-    title: str = None,
-    description: str = None,
+    keyword: str = None,
     date: datetime = None,
     time: timedelta = None,
-    location: str = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(Event)
-    if title:
-        query = query.filter(Event.title.ilike(f"%{title}%"))
-    if description:
-        query = query.filter(Event.description.ilike(f"%{description}%"))
+
+    # Pencarian fleksibel di title, description, atau location
+    if keyword:
+        search_pattern = f"%{keyword}%"
+        query = query.filter(
+            or_(
+                Event.title.ilike(search_pattern),
+                Event.description.ilike(search_pattern),
+                Event.location.ilike(search_pattern)
+            )
+        )
+
     if date:
         query = query.filter(Event.date == date)
     if time:
         query = query.filter(Event.time == time)
-    if location:
-        query = query.filter(Event.location.ilike(f"%{location}%"))
+
     return query.all()
 
 @router.get("/{event_id}", response_model=EventResponse)
