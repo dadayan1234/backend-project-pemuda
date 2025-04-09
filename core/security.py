@@ -35,10 +35,9 @@ def verify_token(token: str = Depends(oauth2_scheme)):
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
-    except jwt.ExpiredSignatureError:
+    except JWTError:
         raise credentials_exception
-    except jwt.InvalidTokenError:
-        raise credentials_exception
+
 
     db = SessionLocal()
     user = db.query(User).filter(User.username == username).first()
