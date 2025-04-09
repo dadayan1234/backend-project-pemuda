@@ -13,28 +13,40 @@ from ..schemas.notification import NotificationResponse, NotificationCreate
 router = APIRouter()
 notification_queues: Dict[int, asyncio.Queue] = {}
 
-# --- SSE: Event stream per user
-async def notification_event_generator(user_id: int):
+# --- SSE Generator
+async def notification_event_generator(user_id: int, request: Request):
     queue = asyncio.Queue()
     notification_queues[user_id] = queue
+
     try:
         while True:
-            data = await queue.get()
-            yield f"data: {data}\n\n"
+            if await request.is_disconnected():
+                break
+
+            try:
+                data = await asyncio.wait_for(queue.get(), timeout=15.0)
+                yield f"data: {data}\n\n"
+            except asyncio.TimeoutError:
+                # Optional: keep-alive message
+                yield "data: {}\n\n"
+
     except asyncio.CancelledError:
+        pass
+    finally:
         notification_queues.pop(user_id, None)
 
+# --- Endpoint SSE
 @router.get("/sse")
 async def stream_notifications(
     request: Request,
     current_user: User = Depends(verify_token)
 ):
     return StreamingResponse(
-        notification_event_generator(current_user.id),
+        notification_event_generator(current_user.id, request),
         media_type="text/event-stream"
     )
 
-# --- Reusable function (dipakai di route lain, contoh: events.py)
+# --- Fungsi Reusable untuk buat dan push notifikasi
 async def create_notification_db(db: Session, title: str, content: str, user_id: int):
     notification = Notification(
         title=title,
@@ -45,7 +57,7 @@ async def create_notification_db(db: Session, title: str, content: str, user_id:
     db.commit()
     db.refresh(notification)
 
-    # Push ke SSE jika user sedang nyambung
+    # Kirim ke client via SSE
     if queue := notification_queues.get(user_id):
         data = json.dumps({
             "id": notification.id,
@@ -55,10 +67,11 @@ async def create_notification_db(db: Session, title: str, content: str, user_id:
             "is_read": notification.is_read
         })
         await queue.put(data)
+        print(f"[SSE] Pushed to user {user_id}")
 
     return notification
 
-# --- Endpoint untuk membuat notifikasi
+# --- POST manual
 @router.post("/", response_model=NotificationResponse)
 async def create_notification(
     payload: NotificationCreate,
@@ -72,7 +85,7 @@ async def create_notification(
         user_id=payload.user_id
     )
 
-# --- Endpoint untuk get semua notifikasi user
+# --- Get semua notifikasi
 @router.get("/", response_model=list[NotificationResponse])
 async def get_notifications(
     current_user: User = Depends(verify_token),
@@ -85,7 +98,7 @@ async def get_notifications(
         .all()
     )
 
-# --- Endpoint untuk menandai notifikasi sudah dibaca
+# --- Mark as read
 @router.post("/{notification_id}/read", response_model=NotificationResponse)
 async def mark_notification_as_read(
     notification_id: int,

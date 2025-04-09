@@ -19,7 +19,7 @@ class EventUpdate(BaseModel):
     date: Optional[datetime] = None
     event_time: Optional[time] = None
     location: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[str] = "akan datang"
 
 class EventPhotoResponse(BaseModel):
     id: int
