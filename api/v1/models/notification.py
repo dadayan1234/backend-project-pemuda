@@ -9,4 +9,10 @@ class Notification(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255))
     content = Column(Text)
+    is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.now)
+
+    # ✅ Tambahkan kolom foreign key dan relasi ke User
+    user_id = Column(Integer, ForeignKey("users.id"))
+
+    user = relationship("User", back_populates="notifications")

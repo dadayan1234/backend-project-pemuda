@@ -12,9 +12,11 @@ class User(Base):
     role = Column(Enum("Admin", "Member"))
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-    
+
     member_info = relationship("Member", back_populates="user", uselist=False)
-    # created_news = relationship("News", back_populates="creator")
+
+    # ✅ Tambahkan relasi baru
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
 
 class Member(Base):
     __tablename__ = "members"
@@ -34,5 +36,3 @@ class Member(Base):
     user = relationship("User", back_populates="member_info")
     attendances = relationship("Attendance", back_populates="member")
     feedback = relationship("Feedback", back_populates="member")
-    
-    
