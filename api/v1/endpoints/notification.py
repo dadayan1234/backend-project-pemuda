@@ -17,23 +17,28 @@ notification_queues: Dict[int, asyncio.Queue] = {}
 async def notification_event_generator(user_id: int, request: Request):
     queue = asyncio.Queue()
     notification_queues[user_id] = queue
+    print(f"[SSE] User {user_id} connected, SSE stream started.")
 
     try:
         while True:
             if await request.is_disconnected():
+                print(f"[SSE] User {user_id} disconnected.")
                 break
 
             try:
                 data = await asyncio.wait_for(queue.get(), timeout=15.0)
+                print(f"[SSE] Sending data to user {user_id}: {data}")
                 yield f"data: {data}\n\n"
             except asyncio.TimeoutError:
                 # Optional: keep-alive message
+                print(f"[SSE] Keep-alive for user {user_id}")
                 yield "data: {}\n\n"
 
     except asyncio.CancelledError:
-        pass
+        print(f"[SSE] CancelledError for user {user_id}")
     finally:
         notification_queues.pop(user_id, None)
+        print(f"[SSE] Cleaned up SSE for user {user_id}")
 
 # --- Endpoint SSE
 @router.get("/sse")
@@ -41,6 +46,7 @@ async def stream_notifications(
     request: Request,
     current_user: User = Depends(verify_token)
 ):
+    print(f"[SSE] /sse endpoint hit by user {current_user.id}")
     return StreamingResponse(
         notification_event_generator(current_user.id, request),
         media_type="text/event-stream"
@@ -57,7 +63,7 @@ async def create_notification_db(db: Session, title: str, content: str, user_id:
     db.commit()
     db.refresh(notification)
 
-    # Kirim ke client via SSE
+    # Kirim ke client via SSE jika aktif
     if queue := notification_queues.get(user_id):
         data = json.dumps({
             "id": notification.id,
@@ -67,7 +73,9 @@ async def create_notification_db(db: Session, title: str, content: str, user_id:
             "is_read": notification.is_read
         })
         await queue.put(data)
-        print(f"[SSE] Pushed to user {user_id}")
+        print(f"[SSE] Notification pushed to queue for user {user_id}: {data}")
+    else:
+        print(f"[SSE] No active SSE client for user {user_id}, cannot push.")
 
     return notification
 
@@ -78,6 +86,7 @@ async def create_notification(
     db: Session = Depends(get_db),
     current_user: User = Depends(verify_token),
 ):
+    print(f"[POST] Create notification: to user {payload.user_id}, from user {current_user.id}")
     return await create_notification_db(
         db=db,
         title=payload.title,
@@ -91,6 +100,7 @@ async def get_notifications(
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
+    print(f"[GET] Fetch notifications for user {current_user.id}")
     return (
         db.query(Notification)
         .filter(Notification.user_id == current_user.id)
@@ -105,6 +115,7 @@ async def mark_notification_as_read(
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
+    print(f"[POST] Mark as read: user {current_user.id}, notif {notification_id}")
     notification = db.query(Notification).filter(
         Notification.id == notification_id,
         Notification.user_id == current_user.id
