@@ -49,7 +49,11 @@ async def stream_notifications(
     print(f"[SSE] /sse endpoint hit by user {current_user.id}")
     return StreamingResponse(
         notification_event_generator(current_user.id, request),
-        media_type="text/event-stream"
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive"
+        }
     )
 
 # --- Fungsi Reusable untuk buat dan push notifikasi
