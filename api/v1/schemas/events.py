@@ -17,7 +17,7 @@ class EventUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     date: Optional[datetime] = None
-    time: Optional[time] = None # type: ignore
+    event_time: Optional[time] = None
     location: Optional[str] = None
     status: Optional[str] = None
 
