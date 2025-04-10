@@ -11,7 +11,6 @@ class Notification(Base):
     content = Column(Text)
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.now)
-    fcm_token = Column(String(512))
 
     # ✅ Tambahkan kolom foreign key dan relasi ke User
     user_id = Column(Integer, ForeignKey("users.id"))
