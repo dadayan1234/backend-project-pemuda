@@ -21,7 +21,7 @@ class Event(Base):
     photos = relationship("EventPhoto", back_populates="event", cascade="all, delete-orphan")
     attendances = relationship("Attendance", back_populates="event", cascade="all, delete-orphan")
     feedback = relationship("Feedback", back_populates="event", cascade="all, delete-orphan")
-    meeting_minutes = relationship("MeetingMinutes", back_populates="event")
+    meeting_minutes = relationship("MeetingMinutes", back_populates="event", cascade="all, delete-orphan")
 
 class EventPhoto(Base):
     __tablename__ = "event_photos"
