@@ -26,11 +26,6 @@ app = FastAPI(
         {"name": "notifications", "description": "Notification management"}
     ]
 )
-# Ensure the uploads directory exists
-if not os.path.exists("uploads"):
-    os.makedirs("uploads")
-
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # CORS middleware
 app.add_middleware(
@@ -40,6 +35,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Ensure the uploads directory exists
+if not os.path.exists("uploads"):
+    os.makedirs("uploads")
+
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
