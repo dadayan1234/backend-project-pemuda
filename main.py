@@ -35,7 +35,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Adjust in production
+    allow_origins=["http://localhost:3000", "https://opnweb.vercel.app"],  # Adjust in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
