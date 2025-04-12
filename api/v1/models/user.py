@@ -14,7 +14,7 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     # fcm_token = Column(String(512), nullable=True)
 
-    member_info = relationship("Member", back_populates="user", uselist=False)
+    member_info = relationship("Member", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
     # ✅ Tambahkan relasi baru
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
@@ -23,14 +23,15 @@ class Member(Base):
     __tablename__ = "members"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    full_name = Column(String(255))
-    birth_date = Column(DateTime)
-    email = Column(String(255))
-    phone_number = Column(String(255))
-    division = Column(String(255))
-    address = Column(Text)
-    position = Column(String(255))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    full_name = Column(String(255), nullable=False)
+    birth_place = Column(String(255))  # ✅ Tempat lahir ditambahkan di sini
+    birth_date = Column(DateTime, nullable=True)
+    email = Column(String(255), nullable=False)
+    phone_number = Column(String(255), nullable=True)
+    division = Column(String(255), nullable=True)
+    address = Column(Text, nullable=True)
+    position = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     

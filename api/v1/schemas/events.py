@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from datetime import datetime, time
 from typing import List, Optional
+from enum import Enum
 
 class EventBase(BaseModel):
     title: str
@@ -60,8 +61,19 @@ class AttendanceResponse(BaseModel):
     class Config:
         from_attributes = True
         
+class EventStatus(str, Enum):
+    upcoming = "akan datang"
+    completed = "selesai"
+        
 class EventSearch(BaseModel):
+    id: int
     title: str
     description: str
     date: datetime
-    
+    time: time
+    location: str
+    status: EventStatus
+
+    class Config:
+        from_attributes = True
+

@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
+    
 
 class UserBase(BaseModel):
     username: str
@@ -16,6 +17,7 @@ class MemberCreate(BaseModel):
     full_name: str
     email : str
     phone_number: str
+    birth_place: str
     birth_date: datetime
     division: str
     address: str
@@ -26,6 +28,7 @@ class MemberUpdate(BaseModel):
     email : Optional[str] = None
     phone_number: Optional[str] = None
     division: Optional[str] = None
+    birth_place: Optional[str] = None
     birth_date: datetime
     address: Optional[str] = None
     position: Optional[str] = None

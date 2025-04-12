@@ -1,14 +1,15 @@
+from datetime import timezone
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from typing import List
+from typing import List, Optional
 from datetime import datetime, timedelta
 from core.database import get_db, admin_required
 from core.security import verify_token
 from ..models.events import Event, Attendance
 from ..models.user import User
 from ..schemas.events import (
-    EventCreate, EventUpdate, EventResponse,
+    EventCreate, EventStatus, EventUpdate, EventResponse,
     AttendanceCreate, AttendanceUpdate, AttendanceResponse, EventSearch
 )
 from ..models.notification import Notification
@@ -58,16 +59,16 @@ async def get_events(
         .all())
     return events
 @router.get("/search", response_model=List[EventSearch])
-@admin_required()
 async def search_events(
-    keyword: str = None,
-    date: datetime = None,
-    time: timedelta = None,
+    keyword: Optional[str] = None,
+    date: Optional[datetime] = None,
+    time: Optional[timedelta] = None,
+    status: Optional[EventStatus] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(Event)
 
-    # Pencarian fleksibel di title, description, atau location
+    # 🔍 Keyword search
     if keyword:
         search_pattern = f"%{keyword}%"
         query = query.filter(
@@ -78,10 +79,23 @@ async def search_events(
             )
         )
 
+    # 📅 Filter berdasarkan tanggal tertentu
     if date:
         query = query.filter(Event.date == date)
+    else:
+        # ✅ Default: satu bulan terakhir
+        one_month_ago = datetime.now(timezone.utc) - timedelta(days=30)
+        query = query.filter(Event.date >= one_month_ago)
+
+    # ⏰ Filter waktu (optional)
     if time:
         query = query.filter(Event.time == time)
+
+    # 📌 Filter berdasarkan status
+    if status:
+        query = query.filter(Event.status == status.value)
+
+    query = query.order_by(Event.date.asc())
 
     return query.all()
 
