@@ -1,7 +1,7 @@
 from datetime import timezone
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 from typing import List, Optional
 from datetime import datetime, timedelta
 from core.database import get_db, admin_required
