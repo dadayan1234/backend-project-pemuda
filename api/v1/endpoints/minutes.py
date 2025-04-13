@@ -30,13 +30,15 @@ async def create_meeting_minutes(
 
 # ✅ Get All Meeting Minutes
 @router.get("/", response_model=List[MeetingMinutesResponse])
-@admin_required()
-async def get_meeting_minutes(db: Session = Depends(get_db)):
+async def get_meeting_minutes(db: Session = Depends(get_db),
+                              current_user: int = Depends(verify_token)):
     return db.query(MeetingMinutes).all()
 
 # ✅ Get Single Meeting Minutes by ID
 @router.get("/{minutes_id}", response_model=MeetingMinutesResponse)
-async def get_meeting_minutes_by_id(minutes_id: int, db: Session = Depends(get_db)):
+async def get_meeting_minutes_by_id(minutes_id: int, db: Session = Depends(get_db),
+                                    current_user: int = Depends(verify_token)
+                                    ):
     if (
         meeting := db.query(MeetingMinutes)
         .filter(MeetingMinutes.id == minutes_id)
@@ -52,7 +54,8 @@ async def get_meeting_minutes_by_id(minutes_id: int, db: Session = Depends(get_d
 async def update_meeting_minutes(
     minutes_id: int,
     update_data: MeetingMinutesUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: int = Depends(verify_token)
 ):
     meeting = db.query(MeetingMinutes).filter(MeetingMinutes.id == minutes_id).first()
     if not meeting:
@@ -74,7 +77,9 @@ async def update_meeting_minutes(
 # ✅ Delete Meeting Minutes
 @router.delete("/{minutes_id}")
 @admin_required()
-async def delete_meeting_minutes(minutes_id: int, db: Session = Depends(get_db)):
+async def delete_meeting_minutes(minutes_id: int, db: Session = Depends(get_db),
+                                 current_user: int = Depends(verify_token)
+                                 ):
     meeting = db.query(MeetingMinutes).filter(MeetingMinutes.id == minutes_id).first()
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting minutes not found")
