@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from api.v1.endpoints import (
     auth, events, finance, member,
-    news, minutes, #schedules,
+    news, minutes, feedback,
     uploads, notification
 )
 from fastapi.staticfiles import StaticFiles
@@ -11,7 +11,7 @@ from starlette.status import HTTP_401_UNAUTHORIZED
 import os
 
 app = FastAPI(
-    title="Business Process API",
+    title="OPN API",
     description="API for organization management",
     version="1.0.0",
     openapi_tags=[
@@ -20,7 +20,7 @@ app = FastAPI(
         {"name": "finances", "description": "Financial management"},
         {"name": "members", "description": "Member management"},
         {"name": "news", "description": "News management"},
-        {"name": "schedules", "description": "Schedule management"},
+        {"name": "feedback", "description": "Feedback management"},
         {"name": "meeting-minutes", "description": "Meeting minutes management"},
         {"name": "uploads", "description": "File upload management"},
         {"name": "notifications", "description": "Notification management"}
@@ -49,7 +49,7 @@ app.include_router(events.router, prefix="/api/v1/events", tags=["events"])
 app.include_router(finance.router, prefix="/api/v1/finance", tags=["finances"])
 app.include_router(member.router, prefix="/api/v1/members", tags=["members"])
 app.include_router(news.router, prefix="/api/v1/news", tags=["news"])
-# app.include_router(schedules.router, prefix="/api/v1/schedules", tags=["schedules"])
+app.include_router(feedback.router, prefix="/api/v1/feedback", tags=["feedback"])
 app.include_router(minutes.router, prefix="/api/v1/meeting-minutes", tags=["meeting-minutes"])
 app.include_router(uploads.router, prefix="/api/v1/uploads", tags=["uploads"])
 app.include_router(notification.router, prefix="/api/v1/notifications", tags=["notifications"])
