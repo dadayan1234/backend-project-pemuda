@@ -220,7 +220,7 @@ async def delete_finance(
         raise HTTPException(status_code=404, detail="Finance record not found")
 
     # Ambil saldo terakhir
-    last_balance = db.query(Finance.balance).order_by(Finance.date.desc()).first()
+    last_balance = db.query(Finance.balance_after).order_by(Finance.date.desc()).first()
     last_balance = last_balance[0] if last_balance else Decimal('0')
 
     # Hitung saldo baru setelah penghapusan

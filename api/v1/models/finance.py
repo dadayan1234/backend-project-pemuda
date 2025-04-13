@@ -14,5 +14,6 @@ class Finance(Base):
     balance_after = Column(DECIMAL(10, 2), nullable=False, comment="Saldo setelah transaksi ini")
     document_url = Column(String(255))
     created_by = Column(Integer, ForeignKey("users.id"))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+ 
