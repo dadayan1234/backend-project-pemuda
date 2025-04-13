@@ -36,5 +36,5 @@ class Member(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     
     user = relationship("User", back_populates="member_info")
-    attendances = relationship("Attendance", back_populates="member")
-    feedback = relationship("Feedback", back_populates="member")
+    attendances = relationship("Attendance", back_populates="member", cascade="all, delete-orphan")
+    feedback = relationship("Feedback", back_populates="member", cascade="all, delete-orphan")
