@@ -7,7 +7,7 @@ class Finance(Base):
     __tablename__ = "finances"
 
     id = Column(Integer, primary_key=True, index=True)
-    amount = Column(DECIMAL(10, 2), nullable=False)
+    amount = Column(DECIMAL(12, 2), nullable=False)
     category = Column(Enum("Pemasukan", "Pengeluaran"), nullable=False)
     date = Column(DateTime, nullable=False)
     description = Column(Text, nullable=False)
