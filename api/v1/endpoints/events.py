@@ -41,7 +41,6 @@ async def create_event(
             user_id=member.id,
             title=f"New Event: {event.title}",
             content=f"A new event has been scheduled for {event.date}",
-            user_id=member.id
         )
 
     return db_event
@@ -140,7 +139,6 @@ async def update_event(
                 user_id=member.id,
                 title=f"Event Rescheduled: {db_event.title}",
                 content=f"The event has been moved to {db_event.date}",
-                user_id=member.id
             )
 
     return db_event
