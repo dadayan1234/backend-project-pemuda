@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import initialize_app
-from notification_service import send_notification
+from .notification_service import send_notification
 
 load_dotenv()
 
