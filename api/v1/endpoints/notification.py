@@ -1,64 +1,29 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import Dict
-import asyncio
-import json
+from typing import List
+from firebase_admin import credentials, initialize_app, messaging
+from pydantic import BaseModel
 from core.security import verify_token
 from core.database import get_db
 from ..models.notification import Notification
 from ..models.user import User
-from ..schemas.notification import NotificationResponse, NotificationCreate
+from ..schemas.notification import NotificationResponse, NotificationCreate, FCMTokenPayload
+
+import firebase_admin
+if not firebase_admin._apps:
+    cred = credentials.Certificate("opn-2da62-firebase-adminsdk-fbsvc-f8fa7b5817.json")
+    initialize_app(cred)
 
 router = APIRouter()
-notification_queues: Dict[int, asyncio.Queue] = {}
 
-# --- SSE Generator
-async def notification_event_generator(user_id: int, request: Request):
-    queue = asyncio.Queue()
-    notification_queues[user_id] = queue
-    print(f"[SSE] User {user_id} connected, SSE stream started.")
-
-    try:
-        while True:
-            if await request.is_disconnected():
-                print(f"[SSE] User {user_id} disconnected.")
-                break
-
-            try:
-                data = await asyncio.wait_for(queue.get(), timeout=5.0)
-                print(f"[SSE] Sending data to user {user_id}: {data}")
-                yield f"data: {data}\n\n"
-            except asyncio.TimeoutError:
-                # Optional: keep-alive message
-                print(f"[SSE] Keep-alive for user {user_id}")
-                yield "data: {}\n\n"
-
-    except asyncio.CancelledError:
-        print(f"[SSE] CancelledError for user {user_id}")
-    finally:
-        notification_queues.pop(user_id, None)
-        print(f"[SSE] Cleaned up SSE for user {user_id}")
-
-# --- Endpoint SSE
-@router.get("/sse")
-async def stream_notifications(
-    request: Request,
-    current_user: User = Depends(verify_token)
-):
-    print(f"[SSE] /sse endpoint hit by user {current_user.id}")
-    return StreamingResponse(
-        notification_event_generator(current_user.id, request),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive"
-        }
-    )
-
-
-# --- Fungsi Reusable untuk buat dan push notifikasi
-async def create_notification_db(db: Session, title: str, content: str, user_id: int):
+# === Fungsi reusable: Simpan dan kirim notifikasi ===
+async def send_notification(
+    db: Session,
+    user_id: int,
+    title: str,
+    content: str
+) -> Notification:
+    # Simpan ke DB
     notification = Notification(
         title=title,
         content=content,
@@ -68,23 +33,27 @@ async def create_notification_db(db: Session, title: str, content: str, user_id:
     db.commit()
     db.refresh(notification)
 
-    # Kirim ke client via SSE jika aktif
-    if queue := notification_queues.get(user_id):
-        data = json.dumps({
-            "id": notification.id,
-            "title": notification.title,
-            "content": notification.content,
-            "created_at": notification.created_at.isoformat(),
-            "is_read": notification.is_read
-        })
-        await queue.put(data)
-        print(f"[SSE] Notification pushed to queue for user {user_id}: {data}")
+    # Kirim FCM jika token tersedia
+    user = db.query(User).filter(User.id == user_id).first()
+    if user and user.fcm_token:
+        try:
+            message = messaging.Message(
+                notification=messaging.Notification(
+                    title=title,
+                    body=content
+                ),
+                token=user.fcm_token
+            )
+            response = messaging.send(message)
+            print(f"[FCM] Notification sent: {response}")
+        except Exception as e:
+            print(f"[FCM] Error sending notification: {e}")
     else:
-        print(f"[SSE] No active SSE client for user {user_id}, cannot push.")
+        print(f"[FCM] No FCM token available for user {user_id}")
 
     return notification
 
-# --- POST manual
+# --- POST: Manual trigger notifikasi
 @router.post("/", response_model=NotificationResponse)
 async def create_notification(
     payload: NotificationCreate,
@@ -92,15 +61,15 @@ async def create_notification(
     current_user: User = Depends(verify_token),
 ):
     print(f"[POST] Create notification: to user {payload.user_id}, from user {current_user.id}")
-    return await create_notification_db(
+    return await send_notification(
         db=db,
+        user_id=payload.user_id,
         title=payload.title,
-        content=payload.content,
-        user_id=payload.user_id
+        content=payload.content
     )
 
-# --- Get semua notifikasi
-@router.get("/", response_model=list[NotificationResponse])
+# --- GET: Semua notifikasi milik user
+@router.get("/", response_model=List[NotificationResponse])
 async def get_notifications(
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
@@ -113,14 +82,14 @@ async def get_notifications(
         .all()
     )
 
-# --- Mark as read
+# --- POST: Tandai notifikasi terbaca (hapus dari DB)
 @router.post("/{notification_id}/read", response_model=NotificationResponse)
 async def mark_notification_as_read(
     notification_id: int,
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    print(f"[POST] Mark as read: user {current_user.id}, notif {notification_id}")
+    print(f"[POST] Mark as read & delete: user {current_user.id}, notif {notification_id}")
     notification = db.query(Notification).filter(
         Notification.id == notification_id,
         Notification.user_id == current_user.id
@@ -129,8 +98,22 @@ async def mark_notification_as_read(
     if not notification:
         raise HTTPException(status_code=404, detail="Notification not found")
 
-    notification.is_read = True
+    db.delete(notification)
     db.commit()
-    db.refresh(notification)
-
     return notification
+
+# --- POST: Simpan token FCM user
+@router.post("/fcm-token")
+def update_fcm_token(
+    payload: FCMTokenPayload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(verify_token)
+):
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.fcm_token = payload.token
+    db.commit()
+    print(f"[FCM] Token updated for user {user.id}")
+    return {"message": "FCM token updated"}
