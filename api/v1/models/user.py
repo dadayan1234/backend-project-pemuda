@@ -12,7 +12,7 @@ class User(Base):
     role = Column(Enum("Admin", "Member"))
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-    # fcm_token = Column(String(512), nullable=True)
+    fcm_token = Column(String(512), nullable=True)
 
     member_info = relationship("Member", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
