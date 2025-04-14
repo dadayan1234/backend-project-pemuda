@@ -8,10 +8,30 @@ from core.database import get_db
 from ..models.notification import Notification
 from ..models.user import User
 from ..schemas.notification import NotificationResponse, NotificationCreate, FCMTokenPayload
-
+import os
+from dotenv import load_dotenv
 import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import initialize_app
+
+load_dotenv()
+
+# Ambil kredensial dari variabel environment
+firebase_cred = {
+    "type": "service_account",
+    "project_id": os.getenv("FIREBASE_PROJECT_ID"),
+    "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
+    "private_key": os.getenv("FIREBASE_PRIVATE_KEY").replace("\\n", "\n"),
+    "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
+    "client_id": os.getenv("FIREBASE_CLIENT_ID"),
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40opn-2da62.iam.gserviceaccount.com",
+}
+
 if not firebase_admin._apps:
-    cred = credentials.Certificate("opn-2da62-firebase-adminsdk-fbsvc-f8fa7b5817.json")
+    cred = credentials.Certificate(firebase_cred)
     initialize_app(cred)
 
 router = APIRouter()
