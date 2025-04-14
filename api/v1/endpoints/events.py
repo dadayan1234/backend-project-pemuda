@@ -15,7 +15,7 @@ from ..schemas.events import (
 from ..models.notification import Notification
 from ..models.events import EventPhoto  # Model yang menyimpan foto event
 from core.utils.file_handler import FileHandler  # Fungsi untuk menghapus file
-from .notification import create_notification_db
+from .notification import send_notification
 
 router = APIRouter()
 
@@ -36,7 +36,7 @@ async def create_event(
     members = db.query(User).filter(User.role == "Member").all()
     for member in members:
         background_tasks.add_task(
-            create_notification_db,
+            send_notification,
             db=db,
             title=f"New Event: {event.title}",
             content=f"A new event has been scheduled for {event.date}",
@@ -134,7 +134,7 @@ async def update_event(
         members = db.query(User).filter(User.role == "Member").all()
         for member in members:
             background_tasks.add_task(
-                create_notification_db,
+                send_notification,
                 db=db,
                 title=f"Event Rescheduled: {db_event.title}",
                 content=f"The event has been moved to {db_event.date}",
