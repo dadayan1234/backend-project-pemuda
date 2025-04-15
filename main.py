@@ -22,7 +22,10 @@ app = FastAPI(
         {"name": "news", "description": "News management"},
         {"name": "feedback", "description": "Feedback management"},
         {"name": "meeting-minutes", "description": "Meeting minutes management"},
-        {"name": "uploads", "description": "File upload management"},
+        {"name": "Uploads - News", "description": "Upload files related to news"},
+        {"name": "Uploads - Events", "description": "Upload files related to events"},
+        {"name": "Uploads - Finance", "description": "Upload finance documents"},
+        {"name": "Uploads - User", "description": "Upload user profile photos"},
         {"name": "notifications", "description": "Notification management"}
     ]
 )
@@ -40,8 +43,6 @@ if not os.path.exists("uploads"):
     os.makedirs("uploads")
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
-
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])

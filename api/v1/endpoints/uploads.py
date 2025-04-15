@@ -47,7 +47,7 @@ async def save_multiple_images(entity_id: int, files: List[UploadFile], entity_t
     return uploaded_urls
 
 
-@router.post("/news/{news_id}/photos", tags=["News Uploads"])
+@router.post("/news/{news_id}/photos", tags=["Uploads - News"])
 @admin_required()
 async def upload_news_photos(
     news_id: int,
@@ -63,7 +63,7 @@ async def upload_news_photos(
     uploaded_urls = await save_multiple_images(news_id, files, "news", db)
     return {"uploaded_files": uploaded_urls}
 
-@router.put("/news/photos/{photo_id}", tags=["News Uploads"])
+@router.put("/news/photos/{photo_id}", tags=["Uploads - News"])
 @admin_required()
 async def edit_news_photo(
     photo_id: int,
@@ -87,7 +87,7 @@ async def edit_news_photo(
     db.commit()
     return {"updated_file": file_url}
 
-@router.delete("/news/photos/{photo_id}", tags=["News Uploads"])
+@router.delete("/news/photos/{photo_id}", tags=["Uploads - News"])
 @admin_required()
 async def delete_news_photo(
     photo_id: int,
@@ -107,7 +107,7 @@ async def delete_news_photo(
     db.commit()
     return {"message": "Photo deleted successfully"}
 
-@router.post("/events/{event_id}/photos", tags=["Events Uploads"])
+@router.post("/events/{event_id}/photos", tags=["Uploads - Events"])
 @admin_required()
 async def upload_event_photos(
     event_id: int,
@@ -123,7 +123,7 @@ async def upload_event_photos(
     uploaded_urls = await save_multiple_images(event_id, files, "events", db)
     return {"uploaded_files": uploaded_urls}
 
-@router.put("/events/photos/{photo_id}", tags=["Events Uploads"])
+@router.put("/events/photos/{photo_id}", tags=["Uploads - Events"])
 @admin_required()
 async def edit_event_photo(
     photo_id: int,
@@ -143,7 +143,7 @@ async def edit_event_photo(
     return {"updated_file": file_url}
 
 
-@router.delete("/events/photos/{photo_id}", tags=["Events Uploads"])
+@router.delete("/events/photos/{photo_id}", tags=["Uploads - Events"])
 @admin_required()
 async def delete_event_photo(
     photo_id: int,
@@ -159,7 +159,7 @@ async def delete_event_photo(
     db.commit()
     return {"message": "Photo deleted successfully"}
 
-@router.post("/finances/{finance_id}/document", tags=["Finance Uploads"])
+@router.post("/finances/{finance_id}/document", tags=["Uploads - Finance"])
 @admin_required()
 async def upload_finance_document(
     finance_id: int,
@@ -178,7 +178,7 @@ async def upload_finance_document(
 
     return {"file_url": file_url}
 
-@router.put("/finances/{finance_id}/document", tags=["Finance Uploads"])
+@router.put("/finances/{finance_id}/document", tags=["Uploads - Finance"])
 @admin_required()
 async def edit_finance_document(
     finance_id: int,
@@ -197,7 +197,7 @@ async def edit_finance_document(
     db.commit()
     return {"updated_file": file_url}
 
-@router.delete("/finances/{finance_id}/document", tags=["Finance Uploads"])
+@router.delete("/finances/{finance_id}/document", tags=["Uploads - Finance"])
 @admin_required()
 async def delete_finance_document(
     finance_id: int,
@@ -220,7 +220,7 @@ def get_save_multiple_images():
 @router.post(
     "/users/{user_id}/photo",
     summary="Upload user profile photo",
-    tags=["User Uploads"]
+    tags=["Uploads - User"]
 )
 @admin_required()
 async def upload_user_photo(
@@ -252,9 +252,8 @@ async def upload_user_photo(
 @router.put(
     "/users/{user_id}/photo",
     summary="Update user profile photo",
-    tags=["User Uploads"]
+    tags=["Uploads - User"]
 )
-@admin_required()
 async def update_user_photo(
     user_id: int,
     file: UploadFile = File(...),
