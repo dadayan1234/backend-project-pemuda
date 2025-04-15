@@ -3,6 +3,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from functools import wraps
 from fastapi import HTTPException
+from typing import Callable, Union, Coroutine, Any
+import asyncio
 
 from dotenv import load_dotenv
 import os
@@ -24,6 +26,8 @@ def get_db():
 
 def admin_required():
     """
+    Decorator yang memeriksa apakah user memiliki role 'Admin'.
+    Berfungsi untuk kedua fungsi synchronous dan asynchronous.
     The `admin_required` function is a decorator in Python that restricts access to functions based on
     the role of the current user.
     :return: The `admin_required` function is returning a decorator function that checks if the current
@@ -31,15 +35,28 @@ def admin_required():
     code of 403 and a detail message indicating that admin access is required. If the user is an admin,
     it calls the original function that the decorator is applied to.
     """
-    def decorator(func):
+    def decorator(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def async_wrapper(*args, **kwargs):
             current_user = kwargs.get('current_user')
             if not current_user or current_user.role != "Admin":
                 raise HTTPException(
                     status_code=403,
                     detail="Admin access required"
                 )
-            return await func(*args, **kwargs)
-        return wrapper
+            if asyncio.iscoroutinefunction(func):
+                return await func(*args, **kwargs)
+            return func(*args, **kwargs)
+        
+        @wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            current_user = kwargs.get('current_user')
+            if not current_user or current_user.role != "Admin":
+                raise HTTPException(
+                    status_code=403,
+                    detail="Admin access required"
+                )
+            return func(*args, **kwargs)
+        
+        return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
     return decorator

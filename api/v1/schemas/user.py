@@ -1,7 +1,7 @@
-from pydantic import BaseModel
-from datetime import datetime
-from typing import Optional
-    
+from pydantic import BaseModel, EmailStr, model_validator
+from datetime import date, datetime
+from typing import Optional, ForwardRef
+
 
 class UserBase(BaseModel):
     username: str
@@ -15,37 +15,66 @@ class UserLogin(UserBase):
 
 class MemberCreate(BaseModel):
     full_name: str
-    email : str
+    email: EmailStr
     phone_number: str
     birth_place: str
     birth_date: datetime
     division: str
     address: str
-    position: str
+    photo_url: str
 
 class MemberUpdate(BaseModel):
     full_name: Optional[str] = None
-    email : Optional[str] = None
+    email: Optional[EmailStr] = None
     phone_number: Optional[str] = None
     division: Optional[str] = None
     birth_place: Optional[str] = None
     birth_date: datetime
     address: Optional[str] = None
-    position: Optional[str] = None
+    photo_url: Optional[str] = None
 
-class MemberResponse(BaseModel):
+# Forward declaration to handle circular reference
+MemberResponse = ForwardRef('MemberResponse')
+
+class MemberResponseBase(BaseModel):
     id: int
     full_name: str
-    division: str
-    position: str
+    birth_place: Optional[str]
+    birth_date: date
+    age: int  # Tambahkan field ini
+    email: Optional[EmailStr]
+    phone_number: Optional[str]
+    division: Optional[str]
+    address: Optional[str]
+    photo_url: Optional[str]
     
     class Config:
-        model_config = {"from_attributes": True}
-        
+        from_attributes = True
+
+    @model_validator(mode='before')
+    def calculate_age(cls, values):
+        if 'birth_date' in values:
+            today = date.today()
+            birth_date = values['birth_date']
+            if isinstance(birth_date, str):
+                birth_date = datetime.strptime(birth_date, '%Y-%m-%d').date()
+            age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+            values['age'] = age
+        return values
+
 class User(UserBase):
     id: int
+    username: str
     role: str
     member_info: Optional[MemberResponse] = None
     
     class Config:
         from_attributes = True
+
+# Now properly define MemberResponse
+class MemberResponse(MemberResponseBase):
+    pass
+
+# Resolve the forward references
+MemberResponse.model_rebuild()
+User.model_rebuild()

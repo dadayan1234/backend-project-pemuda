@@ -31,7 +31,6 @@ class Member(Base):
     phone_number = Column(String(255), nullable=True)
     division = Column(String(255), nullable=True)
     address = Column(Text, nullable=True)
-    position = Column(String(255), nullable=True)
     photo_url = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

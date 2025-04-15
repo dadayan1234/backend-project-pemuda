@@ -1,64 +1,92 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import Dict, List
-from datetime import datetime, timedelta
+from typing import List, Optional
+from datetime import date, datetime
 from core.database import get_db, admin_required
 from core.security import verify_token
-from ..models.events import Event, Attendance
-from ..models.user import Member
-from ..schemas.user import *
-from ..models.notification import Notification
+from ..models.user import User as UserModel, Member  # SQLAlchemy models
+from ..schemas.user import User, MemberResponse, MemberCreate, MemberUpdate  # Pydantic schemas
+from dateutil.relativedelta import relativedelta
 
 router = APIRouter()
 
-@router.get("/", response_model=Dict[str, List[MemberResponse]])
+# Fungsi helper untuk menghitung usia
+def calculate_age_from_birthdate(birth_date: date) -> int:
+    today = date.today()
+    return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+
+@router.get("/", response_model=List[User])
 @admin_required()
-async def get_members(
-    current_user: User = Depends(verify_token),
-    db: Session = Depends(get_db)
+async def get_all_members(
+    age_gt: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(verify_token)
 ):
-    members = db.query(Member).all()
+    query = db.query(UserModel).join(Member).filter(UserModel.role == "Member")
+
+    if age_gt is not None:
+        today = datetime.now()
+        max_birth_date = today - relativedelta(years=age_gt)
+        query = query.filter(Member.birth_date <= max_birth_date)
+
+    users = query.all()
+
+    return [
+        User(
+            id=user.id,
+            username=user.username,
+            role=user.role,
+            member_info=MemberResponse.model_validate(user.member_info.__dict__)
+            if user.member_info else None
+        )
+        for user in users
+    ]
+
+@router.get("/me", response_model=User)
+def get_my_profile(current_user: User = Depends(verify_token), db: Session = Depends(get_db)):
+    db_user = db.query(UserModel).filter(UserModel.id == current_user.id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
     
-    return {"members": [MemberResponse.model_validate(member.__dict__) for member in members]}
+    member_data = None
+    if db_user.member_info:
+        member_dict = db_user.member_info.__dict__
+        member_dict['age'] = calculate_age_from_birthdate(member_dict['birth_date'])
+        member_data = MemberResponse.model_validate(member_dict)
+    
+    return User(
+        id=db_user.id,
+        username=db_user.username,
+        role=db_user.role,
+        member_info=member_data
+    )
 
-
-
-@router.post("/biodata", response_model=MemberResponse)
-async def create_biodata(
+@router.post("/biodata/", response_model=MemberResponse)
+def create_biodata(
     biodata: MemberCreate,
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    if (
-        existing_member := db.query(Member)
-        .filter(Member.user_id == current_user.id)
-        .first()
-    ):
-        raise HTTPException(status_code=400, detail="User already has biodata")
-
-    # Buat entri baru di tabel Member
-    new_member = Member(
+    if db.query(Member).filter(Member.user_id == current_user.id).first():
+        raise HTTPException(status_code=400, detail="Biodata already exists")
+    
+    member = Member(
         user_id=current_user.id,
-        email=biodata.email,
         full_name=biodata.full_name,
+        birth_place=biodata.birth_place,
         birth_date=biodata.birth_date,
+        email=biodata.email,
+        phone_number=biodata.phone_number,
         division=biodata.division,
         address=biodata.address,
-        position=biodata.position
+        photo_url=biodata.photo_url
     )
-
-    # Simpan ke database
-    db.add(new_member)
+    
+    db.add(member)
     db.commit()
-    db.refresh(new_member)
-
-    # Kembalikan response
-    return MemberResponse(
-        id=new_member.id,
-        full_name=new_member.full_name,
-        division=new_member.division,
-        position=new_member.position
-    )
+    db.refresh(member)
+    
+    return MemberResponse.model_validate(member.__dict__)
 
 @router.put("/biodata/", response_model=MemberResponse)
 async def update_biodata(
@@ -66,29 +94,22 @@ async def update_biodata(
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    # Cari member berdasarkan user_id
     member = db.query(Member).filter(Member.user_id == current_user.id).first()
     
     if not member:
-        raise HTTPException(status_code=200, detail="Member not found")
+        raise HTTPException(status_code=404, detail="Member not found")
     
-    # Pastikan hanya pemilik biodata yang bisa mengedit atau admin
     if current_user.role != "Admin" and member.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to update this profile")
     
-    # Update biodata
-    for key, value in biodata.dict(exclude_unset=True).items():
+    update_data = biodata.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
         setattr(member, key, value)
     
     db.commit()
     db.refresh(member)
     
-    return MemberResponse(
-        id=member.id,
-        full_name=member.full_name,
-        division=member.division,
-        position=member.position
-    )
+    return MemberResponse.model_validate(member.__dict__)
 
 @router.delete("/user/{user_id}")
 @admin_required()
@@ -97,13 +118,12 @@ async def delete_user(
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    # Cari user berdasarkan ID
-    user = db.query(User).filter(User.id == user_id).first()
+    # Use SQLAlchemy UserModel
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Hapus user (akan otomatis menghapus data Member jika ada karena relasi)
     db.delete(user)
     db.commit()
     
