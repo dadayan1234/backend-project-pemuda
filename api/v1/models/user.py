@@ -13,7 +13,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     fcm_token = Column(String(512), nullable=True)
-
+    
     member_info = relationship("Member", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
     # ✅ Tambahkan relasi baru
@@ -32,8 +32,10 @@ class Member(Base):
     division = Column(String(255), nullable=True)
     address = Column(Text, nullable=True)
     position = Column(String(255), nullable=True)
+    photo_url = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    
     
     user = relationship("User", back_populates="member_info")
     attendances = relationship("Attendance", back_populates="member", cascade="all, delete-orphan")
