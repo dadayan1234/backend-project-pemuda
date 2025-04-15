@@ -14,8 +14,8 @@ class Event(Base):
     time = Column(Time, nullable=False)
     location = Column(String(255), nullable=False, index=True)      # 🔍 filter by location
     created_by = Column(Integer, ForeignKey("users.id"), index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     status = Column(Enum("akan datang", "selesai"), nullable=False, index=True)  # 🔍 filter berdasarkan status
 
     photos = relationship("EventPhoto", back_populates="event", cascade="all, delete-orphan")
@@ -30,7 +30,7 @@ class EventPhoto(Base):
     id = Column(Integer, primary_key=True, index=True)
     event_id = Column(Integer, ForeignKey("events.id"))
     photo_url = Column(String(255), nullable=False)
-    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    uploaded_at = Column(DateTime, default=datetime.now)
 
     event = relationship("Event", back_populates="photos")
 
@@ -42,8 +42,8 @@ class Attendance(Base):
     member_id = Column(Integer, ForeignKey("members.id"))
     status = Column(Enum("Hadir", "Izin", "Alfa"), nullable=False)
     notes = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
     event = relationship("Event", back_populates="attendances")
     member = relationship("Member", back_populates="attendances")

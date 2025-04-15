@@ -10,7 +10,7 @@ class Feedback(Base):
     member_id = Column(Integer, ForeignKey("members.id"))
     event_id = Column(Integer, ForeignKey("events.id"))
     content = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
     
     member = relationship("Member", back_populates="feedback")
     event = relationship("Event", back_populates="feedback")
