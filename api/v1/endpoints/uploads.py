@@ -1,5 +1,6 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, Request, UploadFile, File, Depends, HTTPException
 from typing import List
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
 import os
@@ -279,3 +280,4 @@ async def update_user_photo(
     member.photo_url = file_url
     db.commit()
     return {"updated_photo_url": file_url}
+
