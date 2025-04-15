@@ -144,7 +144,7 @@ async def upload_finance_document(
 
 
 
-@router.put("/events/photos/{photo_id}")
+@router.put("/events/photos/{photo_id}", tags=["Events Uploads"])
 @admin_required()
 async def edit_event_photo(
     photo_id: int,
@@ -163,7 +163,7 @@ async def edit_event_photo(
     db.commit()
     return {"updated_file": file_url}
 
-@router.delete("/events/photos/{photo_id}")
+@router.delete("/events/photos/{photo_id}", tags=["Events Uploads"])
 @admin_required()
 async def delete_event_photo(
     photo_id: int,
