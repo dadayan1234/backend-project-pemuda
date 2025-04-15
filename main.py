@@ -52,7 +52,7 @@ app.include_router(member.router, prefix="/api/v1/members", tags=["members"])
 app.include_router(news.router, prefix="/api/v1/news", tags=["news"])
 app.include_router(feedback.router, prefix="/api/v1/feedback", tags=["feedback"])
 app.include_router(minutes.router, prefix="/api/v1/meeting-minutes", tags=["meeting-minutes"])
-app.include_router(uploads.router, prefix="/api/v1/uploads", tags=["uploads"])
+app.include_router(uploads.router, prefix="/api/v1/uploads")
 app.include_router(notification.router, prefix="/api/v1/notifications", tags=["notifications"])
 
 security = HTTPBasic()
