@@ -8,7 +8,6 @@ from api.v1.models.user import User
 from dotenv import load_dotenv
 import os
 from sqlalchemy.orm import Session
-from fastapi import Request
 
 load_dotenv()  # Load environment variables from .env file
 
@@ -26,7 +25,7 @@ def create_access_token(data: dict):  # sourcery skip: simplify-dictionary-updat
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def verify_token(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+def verify_token(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -34,13 +33,15 @@ def verify_token(token: str = Depends(oauth2_scheme), db: Session = Depends(get_
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get("sub") # atau user_id: int kalau pakai ID
-        if user_id is None:
+        username: str = payload.get("sub")
+        if username is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
 
-    user = db.query(User).filter(User.id == user_id).first()  # atau User.id == user_id
+
+    db = SessionLocal()
+    user = db.query(User).filter(User.username == username).first()
     if user is None:
         raise credentials_exception
     return user

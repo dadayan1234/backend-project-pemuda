@@ -109,7 +109,7 @@ async def edit_news_photo(
         old_file_url=photo.photo_url,
         file=file,
         category="news",
-        filename_prefix=f"news_photo_{photo_id}",
+        filename_prefix=f"{photo_id}",
         db_model_obj=photo,
         db_field_name="photo_url",
         db=db
@@ -170,7 +170,7 @@ async def edit_event_photo(
         old_file_url=photo.photo_url,
         file=file,
         category="events",
-        filename_prefix=f"event_photo_{photo_id}",
+        filename_prefix=f"{photo_id}",
         db_model_obj=photo,
         db_field_name="photo_url",
         db=db
@@ -231,7 +231,7 @@ async def edit_finance_document(
         old_file_url=finance.document_url,
         file=file,
         category=f"finances/{finance_id}",
-        filename_prefix=f"finance_doc_{finance_id}",
+        filename_prefix=f"{finance_id}",
         db_model_obj=finance,
         db_field_name="document_url",
         db=db

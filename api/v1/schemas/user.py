@@ -79,6 +79,17 @@ class User(UserBase):
 class MemberResponse(MemberResponseBase):
     pass
 
+class UserOut(BaseModel):
+    id: int
+    username: str
+    role: str
+    created_at: datetime
+    updated_at: datetime
+    fcm_token: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 # Resolve the forward references
 MemberResponse.model_rebuild()
 User.model_rebuild()
