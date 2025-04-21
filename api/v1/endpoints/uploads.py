@@ -47,6 +47,35 @@ async def save_multiple_images(entity_id: int, files: List[UploadFile], entity_t
     db.commit()
     return uploaded_urls
 
+async def replace_file(
+    old_file_url: str,
+    file: UploadFile,
+    category: str,
+    filename_prefix: str,
+    db_model_obj,
+    db_field_name: str,
+    db: Session
+) -> str:
+    # Hapus file lama dengan toleransi error
+    if old_file_url:
+        file_handler.delete_image(old_file_url)
+
+    # Generate filename
+    timestamp = int(datetime.now().timestamp() * 1000)
+    file_extension = os.path.splitext(file.filename)[1]
+    filename = f"{filename_prefix}_{timestamp}{file_extension}"
+
+    # Save file
+    today = datetime.now().strftime("%Y-%m-%d")
+    file_url = await file_handler.save_file(file, f"{category}/{today}", filename)
+    file_url = file_url.replace("\\", "/")
+
+    # Update field di DB model
+    setattr(db_model_obj, db_field_name, file_url)
+    db.commit()
+
+    return file_url
+
 
 @router.post("/news/{news_id}/photos", tags=["Uploads - News"])
 @admin_required()
@@ -59,7 +88,7 @@ async def upload_news_photos(
     """Upload multiple images for a news item."""
     news = db.query(News).filter(News.id == news_id).first()
     if not news:
-        raise HTTPException(status_code=404, detail="News not found")
+        raise HTTPException(status_code=200, detail="News not found")
 
     uploaded_urls = await save_multiple_images(news_id, files, "news", db)
     return {"uploaded_files": uploaded_urls}
@@ -72,21 +101,22 @@ async def edit_news_photo(
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    """Edit an existing news photo."""
     photo = db.query(NewsPhoto).filter(NewsPhoto.id == photo_id).first()
     if not photo:
-        raise HTTPException(status_code=404, detail="Photo not found")
+        raise HTTPException(status_code=200, detail="Photo not found")
 
-    # Hapus file lama
-    file_handler.delete_image(photo.photo_url)
+    file_url = await replace_file(
+        old_file_url=photo.photo_url,
+        file=file,
+        category="news",
+        filename_prefix=f"news_photo_{photo_id}",
+        db_model_obj=photo,
+        db_field_name="photo_url",
+        db=db
+    )
 
-    # Simpan file baru
-    file_url = await file_handler.save_file(file, "news", file.filename)
-    file_url = file_url.replace("\\", "/")
-
-    photo.photo_url = file_url
-    db.commit()
     return {"updated_file": file_url}
+
 
 @router.delete("/news/photos/{photo_id}", tags=["Uploads - News"])
 @admin_required()
@@ -98,7 +128,7 @@ async def delete_news_photo(
     """Delete a news photo."""
     photo = db.query(NewsPhoto).filter(NewsPhoto.id == photo_id).first()
     if not photo:
-        raise HTTPException(status_code=404, detail="Photo not found")
+        raise HTTPException(status_code=200, detail="Photo not found")
 
     # Hapus file dari sistem
     file_handler.delete_image(photo.photo_url)
@@ -119,7 +149,7 @@ async def upload_event_photos(
     """Upload multiple images for an event."""
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
-        raise HTTPException(status_code=404, detail="Event not found")
+        raise HTTPException(status_code=200, detail="Event not found")
 
     uploaded_urls = await save_multiple_images(event_id, files, "events", db)
     return {"uploaded_files": uploaded_urls}
@@ -132,16 +162,22 @@ async def edit_event_photo(
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    """Edit an existing event photo."""
     photo = db.query(EventPhoto).filter(EventPhoto.id == photo_id).first()
     if not photo:
-        raise HTTPException(status_code=404, detail="Photo not found")
-    
-    file_url = await file_handler.save_file(file, "events")
-    file_url = file_url.replace("\\", "/")
-    photo.photo_url = file_url
-    db.commit()
+        raise HTTPException(status_code=200, detail="Photo not found")
+
+    file_url = await replace_file(
+        old_file_url=photo.photo_url,
+        file=file,
+        category="events",
+        filename_prefix=f"event_photo_{photo_id}",
+        db_model_obj=photo,
+        db_field_name="photo_url",
+        db=db
+    )
+
     return {"updated_file": file_url}
+
 
 
 @router.delete("/events/photos/{photo_id}", tags=["Uploads - Events"])
@@ -154,7 +190,7 @@ async def delete_event_photo(
     """Delete an event photo."""
     photo = db.query(EventPhoto).filter(EventPhoto.id == photo_id).first()
     if not photo:
-        raise HTTPException(status_code=404, detail="Photo not found")
+        raise HTTPException(status_code=200, detail="Photo not found")
     
     db.delete(photo)
     db.commit()
@@ -170,7 +206,7 @@ async def upload_finance_document(
 ):
     finance = db.query(Finance).filter(Finance.id == finance_id).first()
     if not finance:
-        raise HTTPException(status_code=404, detail="Finance record not found")
+        raise HTTPException(status_code=200, detail="Finance record not found")
 
     file_url = await file_handler.save_file(file, f"finances/{finance_id}")
     file_url = file_url.replace("\\", "/")  # Pastikan selalu menggunakan '/'
@@ -187,16 +223,22 @@ async def edit_finance_document(
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    """Edit an existing finance document."""
     finance = db.query(Finance).filter(Finance.id == finance_id).first()
     if not finance:
-        raise HTTPException(status_code=404, detail="Finance record not found")
-    
-    file_url = await file_handler.save_file(file, f"finances/{finance_id}")
-    file_url = file_url.replace("\\", "/")
-    finance.document_url = file_url
-    db.commit()
+        raise HTTPException(status_code=200, detail="Finance record not found")
+
+    file_url = await replace_file(
+        old_file_url=finance.document_url,
+        file=file,
+        category=f"finances/{finance_id}",
+        filename_prefix=f"finance_doc_{finance_id}",
+        db_model_obj=finance,
+        db_field_name="document_url",
+        db=db
+    )
+
     return {"updated_file": file_url}
+
 
 @router.delete("/finances/{finance_id}/document", tags=["Uploads - Finance"])
 @admin_required()
@@ -208,7 +250,7 @@ async def delete_finance_document(
     """Delete a finance document."""
     finance = db.query(Finance).filter(Finance.id == finance_id).first()
     if not finance:
-        raise HTTPException(status_code=404, detail="Finance record not found")
+        raise HTTPException(status_code=200, detail="Finance record not found")
     
     finance.document_url = None
     db.commit()
@@ -233,7 +275,7 @@ async def upload_user_photo(
     """Upload photo for a user (member) profile."""
     member = db.query(Member).filter(Member.user_id == user_id).first()
     if not member:
-        raise HTTPException(status_code=404, detail="Member not found")
+        raise HTTPException(status_code=200, detail="Member not found")
 
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
@@ -250,34 +292,28 @@ async def upload_user_photo(
     return {"photo_url": file_url}
 
 
-@router.put(
-    "/users/{user_id}/photo",
-    summary="Update user profile photo",
-    tags=["Uploads - User"]
-)
+@router.put("/users/{user_id}/photo", tags=["Uploads - User"])
+@admin_required()
 async def update_user_photo(
     user_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(verify_token)
 ):
-    """Update (replace) a user profile photo. Old file is deleted."""
     member = db.query(Member).filter(Member.user_id == user_id).first()
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
 
-    # Hapus file lama jika ada
-    if member.photo_url:
-        file_handler.delete_image(member.photo_url)
+    file_url = await replace_file(
+        old_file_url=member.photo_url,
+        file=file,
+        category=f"users/{user_id}",
+        filename_prefix=f"profile_{user_id}",
+        db_model_obj=member,
+        db_field_name="photo_url",
+        db=db
+    )
 
-    timestamp = int(datetime.now().timestamp() * 1000)
-    file_extension = os.path.splitext(file.filename)[1]
-    filename = f"profile_{user_id}_{timestamp}{file_extension}"
-
-    file_url = await file_handler.save_file(file, f"users/{user_id}", filename)
-    file_url = file_url.replace("\\", "/")
-
-    member.photo_url = file_url
-    db.commit()
     return {"updated_photo_url": file_url}
+
 
