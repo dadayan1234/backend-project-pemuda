@@ -20,6 +20,8 @@ async def protected_file(
     Endpoint untuk mengakses file yang diproteksi.
     Sekarang mendukung path dari database yang dimulai dengan '/uploads/'
     """
+    if current_user is None:
+        raise HTTPException(status_code=200, detail="Unauthorized: Invalid or missing token")
     # Normalisasi path (hilangkan leading slash jika ada)
     file_path = file_path.lstrip('/')
     
