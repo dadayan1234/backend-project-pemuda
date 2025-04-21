@@ -5,6 +5,7 @@ import os
 from api.v1.models.user import User
 from core.security import verify_token
 from core.database import get_db
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 
@@ -12,7 +13,8 @@ router = APIRouter()
 async def protected_file(
     request: Request,
     file_path: str,
-    current_user: User = Depends(verify_token)
+    current_user: User = Depends(verify_token),
+    db: Session = Depends(get_db)
 ):
     """
     Endpoint untuk mengakses file yang diproteksi.
