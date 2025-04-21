@@ -265,7 +265,6 @@ def get_save_multiple_images():
     summary="Upload user profile photo",
     tags=["Uploads - User"]
 )
-@admin_required()
 async def upload_user_photo(
     user_id: int,
     file: UploadFile = File(...),
@@ -293,7 +292,6 @@ async def upload_user_photo(
 
 
 @router.put("/users/{user_id}/photo", tags=["Uploads - User"])
-@admin_required()
 async def update_user_photo(
     user_id: int,
     file: UploadFile = File(...),
