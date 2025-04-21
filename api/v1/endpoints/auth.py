@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from requests import Session
+from sqlalchemy.orm import Session
 from core.security import create_access_token, verify_token
 from core.database import SessionLocal, admin_required, get_db
 from ..schemas.user import UserCreate, UserCreateWithRole  # Relative import
@@ -17,7 +17,7 @@ def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 @router.post("/admin/register", summary="Register user with custom role", tags=["Admin Only"])
-@admin_required()
+@admin_required
 async def admin_register(user: UserCreateWithRole, db: Session = Depends(get_db)):
     if db.query(User).filter(User.username == user.username).first():
         raise HTTPException(status_code=400, detail="Username already registered")
