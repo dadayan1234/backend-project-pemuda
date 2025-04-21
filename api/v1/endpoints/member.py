@@ -5,7 +5,7 @@ from datetime import date, datetime
 from core.database import get_db, admin_required
 from core.security import verify_token
 from ..models.user import User as UserModel, Member  # SQLAlchemy models
-from ..schemas.user import User, MemberResponse, MemberCreate, MemberUpdate  # Pydantic schemas
+from ..schemas.user import User, MemberResponse, MemberCreate, MemberUpdate, UserCreate  # Pydantic schemas
 from dateutil.relativedelta import relativedelta
 
 router = APIRouter()
@@ -59,6 +59,51 @@ def get_my_profile(current_user: User = Depends(verify_token), db: Session = Dep
         username=db_user.username,
         role=db_user.role,
         member_info=member_data
+    )
+    
+@router.post("/create_user", response_model=User)
+@admin_required()
+async def create_user_account(
+    user_data: UserCreate,  # Schema untuk data akun
+    biodata: MemberCreate,  # Schema untuk biodata member
+    db: Session = Depends(get_db),
+    current_user: User = Depends(verify_token)  # Pastikan hanya admin yang bisa mengakses ini
+):
+    # Cek apakah username sudah ada
+    if db.query(UserModel).filter(UserModel.username == user_data.username).first():
+        raise HTTPException(status_code=400, detail="Username already exists")
+
+    # Membuat User baru
+    new_user = UserModel(
+        username=user_data.username,
+        password=user_data.password,  # Hash password sebelum disimpan
+        role="Member",  # Role untuk member
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    # Membuat biodata member
+    member = Member(
+        user_id=new_user.id,
+        full_name=biodata.full_name,
+        birth_place=biodata.birth_place,
+        birth_date=biodata.birth_date,
+        email=biodata.email,
+        phone_number=biodata.phone_number,
+        division=biodata.division,
+        address=biodata.address,
+        photo_url=biodata.photo_url
+    )
+    db.add(member)
+    db.commit()
+    db.refresh(member)
+
+    return User(
+        id=new_user.id,
+        username=new_user.username,
+        role=new_user.role,
+        member_info=MemberResponse.model_validate(member.__dict__)
     )
 
 @router.post("/biodata/", response_model=MemberResponse)
@@ -128,3 +173,27 @@ async def delete_user(
     db.commit()
     
     return {"message": "User deleted successfully"}
+
+@router.delete("/delete_older_than_35", response_model=List[User])
+@admin_required()
+async def delete_users_older_than_35(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(verify_token)
+):
+    today = datetime.now()
+    max_birth_date = today - relativedelta(years=35)
+    
+    # Mencari user dengan usia lebih dari 35 tahun
+    users_to_delete = db.query(UserModel).join(Member).filter(
+        Member.birth_date <= max_birth_date
+    ).all()
+
+    if not users_to_delete:
+        raise HTTPException(status_code=404, detail="No users older than 35 found")
+
+    for user in users_to_delete:
+        db.delete(user)
+    
+    db.commit()
+
+    return {"message": f"Successfully deleted {len(users_to_delete)} users older than 35 years."}

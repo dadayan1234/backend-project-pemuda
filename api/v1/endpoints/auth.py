@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from requests import Session
 from core.security import create_access_token, verify_token
-from core.database import SessionLocal
-from ..schemas.user import UserCreate  # Relative import
+from core.database import SessionLocal, admin_required, get_db
+from ..schemas.user import UserCreate, UserCreateWithRole  # Relative import
 from ..models.user import User  # Relative import
 from passlib.context import CryptContext
 
@@ -15,21 +16,44 @@ def get_password_hash(password):
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
-@router.post("/register")
-async def register(user: UserCreate):
-    db = SessionLocal()
-    if (
-        db_user := db.query(User)
-        .filter(User.username == user.username)
-        .first()
-    ):
+@router.post("/admin/register", summary="Register user with custom role", tags=["Admin Only"])
+@admin_required()
+async def admin_register(user: UserCreateWithRole, db: Session = Depends(get_db)):
+    if db.query(User).filter(User.username == user.username).first():
         raise HTTPException(status_code=400, detail="Username already registered")
+
     hashed_password = get_password_hash(user.password)
-    new_user = User(username=user.username, password=hashed_password, role=user.role)
+
+    new_user = User(
+        username=user.username,
+        password=hashed_password,
+        role=user.role  # 🟡 Bisa 'Admin' atau lainnya
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"message": f"User with role '{user.role}' registered successfully"}
+
+
+@router.post("/register", summary="Public register - always member")
+async def public_register(user: UserCreate):
+    db = SessionLocal()
+    if db.query(User).filter(User.username == user.username).first():
+        raise HTTPException(status_code=400, detail="Username already registered")
+
+    hashed_password = get_password_hash(user.password)
+
+    new_user = User(
+        username=user.username,
+        password=hashed_password,
+        role="Member"  # 🔒 Enforce member role
+    )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return {"message": "User registered successfully"}
+
+
 
 @router.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):

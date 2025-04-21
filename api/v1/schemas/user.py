@@ -1,14 +1,18 @@
 from pydantic import BaseModel, EmailStr, model_validator
 from datetime import date, datetime
-from typing import Optional, ForwardRef
+from typing import Literal, Optional, ForwardRef
 
 
 class UserBase(BaseModel):
     username: str
-    
+
 class UserCreate(UserBase):
     password: str
-    role: str = "Member"
+    
+class UserCreateWithRole(BaseModel):
+    username: str
+    password: str
+    role: Literal["Member", "Admin"]  # atau pakai Enum kalau kamu sudah define role
 
 class UserLogin(UserBase):
     password: str
