@@ -32,7 +32,7 @@ async def protected_file(
     physical_path = os.path.join("uploads", file_path)
 
     if not os.path.isfile(physical_path):
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(status_code=200, detail="File not found")
 
     # Proteksi berdasarkan jenis file
     if file_path.startswith("users/"):
