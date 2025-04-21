@@ -63,31 +63,40 @@ app.include_router(notification.router, prefix="/api/v1/notifications", tags=["n
 
 # Ganti app.mount dengan ini:
 app.include_router(file.router, tags=["file"])
+
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    # Biarkan request ke endpoint API langsung pass
-    if request.url.path.startswith('/api/'):
+    path = request.url.path.lstrip('/')
+    if path.startswith("/uploads/"):
+        # Biarkan router FastAPI yang handle
         return await call_next(request)
 
-    # Tangani request ke /uploads/
-    if request.url.path.startswith('/uploads/'):
-        try:
-            from api.v1.endpoints.file import protected_file
-            file_path = request.url.path[len('/uploads/'):]
-            
-            # Buat request baru dengan path yang sudah dinormalisasi
-            modified_request = request
-            modified_request.scope["path"] = f"/{file_path}"
-            
-            return await protected_file(modified_request, file_path)
-        except HTTPException as e:
-            from fastapi.responses import JSONResponse
-            return JSONResponse(
-                status_code=e.status_code,
-                content={"detail": e.detail}
-            )
-
     return await call_next(request)
+# @app.middleware("http")
+# async def auth_middleware(request: Request, call_next):
+#     # Biarkan request ke endpoint API langsung pass
+#     if request.url.path.startswith('/api/'):
+#         return await call_next(request)
+
+#     # Tangani request ke /uploads/
+#     if request.url.path.startswith('/uploads/'):
+#         try:
+#             from api.v1.endpoints.file import protected_file
+#             file_path = request.url.path[len('/uploads/'):]
+            
+#             # Buat request baru dengan path yang sudah dinormalisasi
+#             modified_request = request
+#             modified_request.scope["path"] = f"/{file_path}"
+            
+#             return await protected_file(modified_request, file_path)
+#         except HTTPException as e:
+#             from fastapi.responses import JSONResponse
+#             return JSONResponse(
+#                 status_code=e.status_code,
+#                 content={"detail": e.detail}
+#             )
+
+#     return await call_next(request)
 
 
 
