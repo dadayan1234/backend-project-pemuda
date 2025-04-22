@@ -25,7 +25,7 @@ async def get_all_members(
     query = db.query(UserModel).join(Member).filter(UserModel.role == "Member")
 
     if age_gt is not None:
-        today = datetime.now()
+        today = datetime.now("Asia/Jakarta")
         max_birth_date = today - relativedelta(years=age_gt)
         query = query.filter(Member.birth_date <= max_birth_date)
 
@@ -180,7 +180,7 @@ async def delete_users_older_than_35(
     db: Session = Depends(get_db),
     current_user: User = Depends(verify_token)
 ):
-    today = datetime.now()
+    today = datetime.now("Asia/Jakarta")
     max_birth_date = today - relativedelta(years=35)
     
     # Mencari user dengan usia lebih dari 35 tahun
