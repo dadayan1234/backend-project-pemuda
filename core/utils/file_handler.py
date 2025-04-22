@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime
 from fastapi import UploadFile
 from typing import Optional
+from PIL import Image
 
 class FileHandler:
     def __init__(self, base_path: str = "uploads"):
@@ -25,6 +26,27 @@ class FileHandler:
 
         # Pastikan path dalam format Unix-style (untuk URL)
         return f"/{file_path.as_posix()}"
+    
+    def _resize_and_crop_user(self, image: Image.Image) -> Image.Image:
+        """Resize and crop to 4:3 aspect ratio, center crop, final size 400x300"""
+        target_ratio = 4 / 3
+        width, height = image.size
+        current_ratio = width / height
+
+        if current_ratio > target_ratio:
+            # Crop width
+            new_width = int(height * target_ratio)
+            left = (width - new_width) // 2
+            top, right, bottom = 0, left + new_width, height
+        else:
+            # Crop height
+            new_height = int(width / target_ratio)
+            top = (height - new_height) // 2
+            left, right, bottom = 0, width, top + new_height
+
+        image = image.crop((left, top, right, bottom))
+        image = image.resize((400, 300))  # Resize to standard
+        return image
     
     @staticmethod
     def delete_image(file_url: str):  # sourcery skip: use-string-remove-affix
