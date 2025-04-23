@@ -39,8 +39,8 @@ async def create_event(
             send_notification,
             db=db,
             user_id=member.id,
-            title=f"New Event: {event.title}",
-            content=f"A new event has been scheduled for {event.date}",
+            title=f"Acara Baru !: {event.title}",
+            content=f"Acara Baru Dijadwalkan pada {event.date}",
         )
 
     return db_event
@@ -137,8 +137,8 @@ async def update_event(
                 send_notification,
                 db=db,
                 user_id=member.id,
-                title=f"Event Rescheduled: {db_event.title}",
-                content=f"The event has been moved to {db_event.date}",
+                title=f"Acara Dijawalkan Ulang: {db_event.title}",
+                content=f"Acara Dijadwalkan pada {db_event.date}",
             )
 
     return db_event
