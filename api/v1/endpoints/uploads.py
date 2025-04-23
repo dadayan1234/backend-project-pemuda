@@ -21,13 +21,13 @@ file_handler = FileHandler()
 async def save_multiple_images(entity_id: int, files: List[UploadFile], entity_type: str, db: Session):
     """Helper function untuk menyimpan multiple gambar."""
     uploaded_urls = []
-    today_date = datetime.now("Asia/Jakarta").strftime("%Y-%m-%d")
+    today_date = datetime.now().strftime("%Y-%m-%d")
 
     for idx, file in enumerate(files):
         if not file.content_type.startswith('image/'):
             raise HTTPException(status_code=400, detail="File must be an image")
 
-        timestamp = int(datetime.now("Asia/Jakarta").timestamp() * 1000)  
+        timestamp = int(datetime.now().timestamp() * 1000)  
         file_extension = os.path.splitext(file.filename)[1]
         new_filename = f"{timestamp}_{idx}{file_extension}"
         
@@ -61,12 +61,12 @@ async def replace_file(
         file_handler.delete_image(old_file_url)
 
     # Generate filename
-    timestamp = int(datetime.now("Asia/Jakarta").timestamp() * 1000)
+    timestamp = int(datetime.now().timestamp() * 1000)
     file_extension = os.path.splitext(file.filename)[1]
     filename = f"{filename_prefix}_{timestamp}{file_extension}"
 
     # Save file
-    today = datetime.now("Asia/Jakarta").strftime("%Y-%m-%d")
+    today = datetime.now().strftime("%Y-%m-%d")
     file_url = await file_handler.save_file(file, f"{category}/{today}", filename)
     file_url = file_url.replace("\\", "/")
 
@@ -279,7 +279,7 @@ async def upload_user_photo(
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
 
-    timestamp = int(datetime.now("Asia/Jakarta").timestamp() * 1000)
+    timestamp = int(datetime.now().timestamp() * 1000)
     file_extension = os.path.splitext(file.filename)[1]
     filename = f"profile_{user_id}_{timestamp}{file_extension}"
 

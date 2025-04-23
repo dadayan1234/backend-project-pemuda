@@ -12,7 +12,7 @@ class FileHandler:
         
     async def save_file(self, file: UploadFile, category: str, filename: str) -> str:
         """Menyimpan file ke dalam direktori tertentu dengan nama yang diberikan."""
-        today = datetime.now("Asia/Jakarta")
+        today = datetime.now()
         year_month = today.strftime("%Y-%m")
         category_path = Path(self.base_path) / category / year_month
 

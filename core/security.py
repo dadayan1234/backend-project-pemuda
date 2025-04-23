@@ -19,7 +19,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token")
 
 def create_access_token(data: dict):  # sourcery skip: simplify-dictionary-update
     to_encode = data.copy()
-    expire = datetime.now("Asia/Jakarta") + timedelta(
+    expire = datetime.now(datetime.now(timezone.utc)) + timedelta(
         minutes=ACCESS_TOKEN_EXPIRE_MINUTES
     )
     to_encode.update({"exp": expire})
