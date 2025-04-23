@@ -26,7 +26,6 @@ async def get_all_members(
     query = db.query(UserModel).join(Member).filter(UserModel.role == "Member")
 
     if age_gt is not None:
-        tz = pytz.timezone("Asia/Jakarta")
         today = datetime.now()
         max_birth_date = today - relativedelta(years=age_gt)
         query = query.filter(Member.birth_date <= max_birth_date)
@@ -199,3 +198,4 @@ async def delete_users_older_than_35(
     db.commit()
 
     return {"message": f"Successfully deleted {len(users_to_delete)} users older than 35 years."}
+
