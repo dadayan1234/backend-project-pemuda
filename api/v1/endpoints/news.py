@@ -1,6 +1,10 @@
 import json
+from pathlib import Path
+import uuid
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, UploadFile, File
+from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from api.v1.endpoints.notification_service import send_notification
 from core.database import get_db, admin_required
@@ -10,7 +14,7 @@ from ..models.news import News, NewsPhoto
 from ..schemas.news import NewsCreate, NewsResponse, NewsUpdate, NewsPhotoResponse
 from datetime import datetime
 from core.utils.file_handler import FileHandler
-from .uploads import save_multiple_images
+from .uploads import get_file_handler, replace_file, save_multiple_images
 
 
 router = APIRouter()
@@ -98,59 +102,42 @@ async def create_news(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-
-
-@router.put("/{news_id}", response_model=NewsResponse)
+@router.put("/news/{news_id}", response_model=NewsResponse)
 @admin_required()
 async def update_news(
     news_id: int,
+    news_update: NewsUpdate,
     background_tasks: BackgroundTasks,
-    news_data: NewsUpdate,  # Menggunakan pydantic model untuk data JSON
     current_user: User = Depends(verify_token),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db)
 ):
-    # Mencari berita berdasarkan ID
+    # Ambil data berita berdasarkan ID
     db_news = db.query(News).filter(News.id == news_id).first()
     if not db_news:
         raise HTTPException(status_code=404, detail="News not found")
 
-    try:
-        # Menyimpan status sebelumnya dari is_published
-        previously_published = db_news.is_published
+    # Update data yang ada
+    for field, value in news_update.dict(exclude_unset=True).items():
+        setattr(db_news, field, value)
 
-        # Menyimpan perubahan hanya untuk field yang diberikan dalam request body
-        update_dict = news_data.dict(exclude_unset=True)  # Hanya field yang diberikan yang akan diupdate
-        for field, value in update_dict.items():
-            setattr(db_news, field, value)
+    # Commit perubahan ke database
+    db.commit()
+    db.refresh(db_news)
 
-        # Memperbarui waktu update
-        db_news.updated_at = datetime.now()
+    # Cek apakah is_published diubah menjadi True
+    if news_update.is_published:
+        # Kirim notifikasi kepada semua user yang berperan sebagai Member
+        members = db.query(User).filter(User.role == "Member").all()
+        for member in members:
+            background_tasks.add_task(
+                send_notification,
+                db=db,
+                user_id=member.id,
+                title=f"Berita Terbaru: {db_news.title}",
+                content=f"Berita baru telah dipublikasikan: {db_news.title}",
+            )
 
-        # Commit perubahan ke database
-        db.commit()
-        db.refresh(db_news)
-
-        # Upload foto (jika ada) - Di sini kita tidak memproses gambar karena ada endpoint terpisah
-        if news_data.files:
-            await save_multiple_images(db_news.id, news_data.files, "news", db)
-
-        # Mengirim notifikasi jika berubah menjadi published
-        if not previously_published and db_news.is_published:
-            members = db.query(User).filter(User.role == "Member").all()
-            for member in members:
-                background_tasks.add_task(
-                    send_notification,
-                    db=db,
-                    user_id=member.id,
-                    title=f"Berita Dipublikasikan: {db_news.title}",
-                    content=f"{db_news.description[:100]}..."
-                )
-
-        return db_news
-
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+    return db_news
 
 
 @router.delete("/{news_id}")
