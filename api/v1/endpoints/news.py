@@ -19,13 +19,12 @@ save_multiple_images = get_save_multiple_images()  # Get the working function
 @admin_required()
 async def create_news(
     news_data: NewsCreate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db),
     files: Optional[List[UploadFile]] = File(None)
 ):
-    """Create news with optional photos using the existing upload function"""
     try:
-        # Create news entry
         db_news = News(
             title=news_data.title,
             description=news_data.description,
@@ -37,11 +36,27 @@ async def create_news(
         db.commit()
         db.refresh(db_news)
 
-        # Handle file uploads using the existing working function
         if files:
             await save_multiple_images(db_news.id, files, "news", db)
-            
+
+        # Kirim notifikasi jika langsung dipublish
+        if news_data.is_published:
+            members = db.query(User).filter(User.role == "Member").all()
+            for member in members:
+                background_tasks.add_task(
+                    send_notification,
+                    db=db,
+                    user_id=member.id,
+                    title=f"Berita Baru: {db_news.title}",
+                    content=f"{db_news.description[:100]}...",  # ringkasan
+                )
+
         return db_news
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
         
     except Exception as e:
         db.rollback()
