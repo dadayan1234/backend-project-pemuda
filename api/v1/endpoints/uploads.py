@@ -257,8 +257,6 @@ async def delete_finance_document(
     return {"message": "Document deleted successfully"}
 
 # Add this at the bottom of uploads.py
-def get_save_multiple_images():
-    return save_multiple_images
 
 @router.post(
     "/users/{user_id}/photo",

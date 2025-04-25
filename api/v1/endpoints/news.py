@@ -1,66 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+import json
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from api.v1.endpoints.notification_service import send_notification
 from core.database import get_db, admin_required
 from core.security import verify_token
 from ..models.user import User
 from ..models.news import News, NewsPhoto
 from ..schemas.news import NewsCreate, NewsResponse, NewsUpdate, NewsPhotoResponse
-from .uploads import get_save_multiple_images, file_handler # Import the function getter
 from datetime import datetime
-from fastapi import BackgroundTasks
-from .notification_service import send_notification
+from core.utils.file_handler import FileHandler
+from .uploads import save_multiple_images
 
 
 router = APIRouter()
-save_multiple_images = get_save_multiple_images()  # Get the working function
+file_handler = FileHandler()
 
-@router.post("/", response_model=NewsResponse)
-@admin_required()
-async def create_news(
-    news_data: NewsCreate,
-    background_tasks: BackgroundTasks,
-    current_user: User = Depends(verify_token),
-    db: Session = Depends(get_db),
-    files: Optional[List[UploadFile]] = File(None)
-):
-    try:
-        db_news = News(
-            title=news_data.title,
-            description=news_data.description,
-            date=news_data.date,
-            is_published=news_data.is_published,
-            created_by=current_user.id
-        )
-        db.add(db_news)
-        db.commit()
-        db.refresh(db_news)
-
-        if files:
-            await save_multiple_images(db_news.id, files, "news", db)
-
-        # Kirim notifikasi jika langsung dipublish
-        if news_data.is_published:
-            members = db.query(User).filter(User.role == "Member").all()
-            for member in members:
-                background_tasks.add_task(
-                    send_notification,
-                    db=db,
-                    user_id=member.id,
-                    title=f"Berita Baru: {db_news.title}",
-                    content=f"{db_news.description[:100]}...",  # ringkasan
-                )
-
-        return db_news
-
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-
-        
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/", response_model=List[NewsResponse])
 async def get_all_news(
@@ -96,41 +51,107 @@ async def get_news_detail(
     
     return news
 
+@router.post("/", response_model=NewsResponse)
+@admin_required()
+async def create_news(
+    background_tasks: BackgroundTasks,
+    title: str = Form(...),
+    description: str = Form(...),
+    date: datetime = Form(...),
+    is_published: bool = Form(True),
+    files: Optional[List[UploadFile]] = File(None),
+    current_user: User = Depends(verify_token),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Buat objek dan simpan
+        db_news = News(
+            title=title,
+            description=description,
+            date=date,
+            is_published=is_published,
+            created_by=current_user.id,
+        )
+        db.add(db_news)
+        db.commit()
+        db.refresh(db_news)
+
+        # Upload foto (jika ada)
+        if files:
+            await save_multiple_images(db_news.id, files, "news", db)
+
+        # Kirim notifikasi jika published
+        if is_published:
+            members = db.query(User).filter(User.role == "Member").all()
+            for member in members:
+                background_tasks.add_task(
+                    send_notification,
+                    db=db,
+                    user_id=member.id,
+                    title=f"Berita Baru: {db_news.title}",
+                    content=f"{db_news.description[:100]}..."
+                )
+
+        return db_news
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 @router.put("/{news_id}", response_model=NewsResponse)
 @admin_required()
 async def update_news(
     news_id: int,
-    news_data: NewsUpdate,
     background_tasks: BackgroundTasks,
+    news_data: NewsUpdate,  # Menggunakan pydantic model untuk data JSON
     current_user: User = Depends(verify_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
+    # Mencari berita berdasarkan ID
     db_news = db.query(News).filter(News.id == news_id).first()
     if not db_news:
         raise HTTPException(status_code=404, detail="News not found")
 
-    previously_published = db_news.is_published
+    try:
+        # Menyimpan status sebelumnya dari is_published
+        previously_published = db_news.is_published
 
-    update_data = news_data.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(db_news, field, value)
+        # Menyimpan perubahan hanya untuk field yang diberikan dalam request body
+        update_dict = news_data.dict(exclude_unset=True)  # Hanya field yang diberikan yang akan diupdate
+        for field, value in update_dict.items():
+            setattr(db_news, field, value)
 
-    db.commit()
-    db.refresh(db_news)
+        # Memperbarui waktu update
+        db_news.updated_at = datetime.now()
 
-    # Kirim notifikasi hanya jika status berubah dari tidak publish → publish
-    if not previously_published and db_news.is_published:
-        members = db.query(User).filter(User.role == "Member").all()
-        for member in members:
-            background_tasks.add_task(
-                send_notification,
-                db=db,
-                user_id=member.id,
-                title=f"Berita Dipublikasikan: {db_news.title}",
-                content=f"{db_news.description[:100]}...",
-            )
+        # Commit perubahan ke database
+        db.commit()
+        db.refresh(db_news)
 
-    return db_news
+        # Upload foto (jika ada) - Di sini kita tidak memproses gambar karena ada endpoint terpisah
+        if news_data.files:
+            await save_multiple_images(db_news.id, news_data.files, "news", db)
+
+        # Mengirim notifikasi jika berubah menjadi published
+        if not previously_published and db_news.is_published:
+            members = db.query(User).filter(User.role == "Member").all()
+            for member in members:
+                background_tasks.add_task(
+                    send_notification,
+                    db=db,
+                    user_id=member.id,
+                    title=f"Berita Dipublikasikan: {db_news.title}",
+                    content=f"{db_news.description[:100]}..."
+                )
+
+        return db_news
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.delete("/{news_id}")
 @admin_required()
