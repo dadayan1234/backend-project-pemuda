@@ -101,13 +101,15 @@ async def get_news_detail(
 async def update_news(
     news_id: int,
     news_data: NewsUpdate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    """Update informasi berita"""
     db_news = db.query(News).filter(News.id == news_id).first()
     if not db_news:
         raise HTTPException(status_code=404, detail="News not found")
+
+    previously_published = db_news.is_published
 
     update_data = news_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -115,7 +117,21 @@ async def update_news(
 
     db.commit()
     db.refresh(db_news)
+
+    # Kirim notifikasi hanya jika status berubah dari tidak publish → publish
+    if not previously_published and db_news.is_published:
+        members = db.query(User).filter(User.role == "Member").all()
+        for member in members:
+            background_tasks.add_task(
+                send_notification,
+                db=db,
+                user_id=member.id,
+                title=f"Berita Dipublikasikan: {db_news.title}",
+                content=f"{db_news.description[:100]}...",
+            )
+
     return db_news
+s
 
 @router.delete("/{news_id}")
 @admin_required()
