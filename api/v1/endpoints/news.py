@@ -131,7 +131,6 @@ async def update_news(
             )
 
     return db_news
-s
 
 @router.delete("/{news_id}")
 @admin_required()
