@@ -8,6 +8,9 @@ from ..models.news import News, NewsPhoto
 from ..schemas.news import NewsCreate, NewsResponse, NewsUpdate, NewsPhotoResponse
 from .uploads import get_save_multiple_images, file_handler # Import the function getter
 from datetime import datetime
+from fastapi import BackgroundTasks
+from .notification_service import send_notification
+
 
 router = APIRouter()
 save_multiple_images = get_save_multiple_images()  # Get the working function
@@ -43,25 +46,6 @@ async def create_news(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/{news_id}/photos")
-@admin_required()
-async def upload_news_photos(
-    news_id: int,
-    files: List[UploadFile] = File(...),
-    current_user: User = Depends(verify_token),
-    db: Session = Depends(get_db)
-):
-    """Upload multiple photos for news using the existing working function"""
-    news = db.query(News).filter(News.id == news_id).first()
-    if not news:
-        raise HTTPException(status_code=404, detail="News not found")
-
-    # Directly use the proven function from uploads.py
-    uploaded_urls = await save_multiple_images(news_id, files, "news", db)
-    return {"uploaded_files": uploaded_urls}
-
-# Keep all other endpoints (GET, PUT, DELETE) unchanged
 
 @router.get("/", response_model=List[NewsResponse])
 async def get_all_news(
