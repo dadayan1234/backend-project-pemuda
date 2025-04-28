@@ -48,7 +48,7 @@ async def get_news_detail(
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    """Dapatkan detail berita beserta foto-fotonya"""
+    """Dapatkan detail berita beserta foto-fotonya,"""
     news = db.query(News).filter(News.id == news_id).first()
     if not news:
         raise HTTPException(status_code=404, detail="News not found")
