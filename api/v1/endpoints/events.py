@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from core.database import get_db, admin_required
 from core.security import verify_token
 from ..models.events import Event, Attendance
-from ..models.user import User
+from ..models.user import Member, User
 from ..schemas.events import (
     EventCreate, EventStatus, EventUpdate, EventResponse,
     AttendanceCreate, AttendanceUpdate, AttendanceResponse, EventSearch
@@ -241,7 +241,24 @@ async def update_attendance(
 @router.get("/{event_id}/attendance", response_model=List[AttendanceResponse])
 async def get_attendance(
     event_id: int,
-    current_user: User = Depends(verify_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(verify_token)
 ):
-    return db.query(Attendance).filter(Attendance.event_id == event_id).all()
+    attendances = db.query(Attendance).join(Member).filter(Attendance.event_id == event_id).all()
+
+    result = [
+        AttendanceResponse(
+            id=att.id,
+            member_id=att.member_id,
+            event_id=att.event_id,
+            full_name=att.member.full_name,  # Ambil dari relasi
+            status=att.status,
+            notes=att.notes,
+            created_at=att.created_at,
+            updated_at=att.updated_at
+        )
+        for att in attendances
+    ]
+
+    return result
+

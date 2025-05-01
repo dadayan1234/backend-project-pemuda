@@ -53,6 +53,7 @@ class AttendanceResponse(BaseModel):
     id: int
     member_id: int
     event_id: int
+    full_name: str
     status: str
     notes: Optional[str]
     created_at: datetime
