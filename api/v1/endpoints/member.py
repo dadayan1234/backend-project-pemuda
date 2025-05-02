@@ -124,7 +124,8 @@ def create_biodata(
         email=biodata.email,
         phone_number=biodata.phone_number,
         division=biodata.division,
-        address=biodata.address
+        address=biodata.address,
+        photo_url=biodata.photo_url
     )
     
     db.add(member)
