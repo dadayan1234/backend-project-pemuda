@@ -125,7 +125,7 @@ def create_biodata(
         phone_number=biodata.phone_number,
         division=biodata.division,
         address=biodata.address,
-        photo_url=biodata.photo_url
+        photo_url=biodata.photo_url if hasattr(biodata, 'photo_url') else None
     )
     
     db.add(member)
