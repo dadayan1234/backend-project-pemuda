@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date, datetime
@@ -32,6 +33,31 @@ async def get_all_members(
 
     users = query.all()
 
+    return [
+        User(
+            id=user.id,
+            username=user.username,
+            role=user.role,
+            member_info=MemberResponse.model_validate(user.member_info.__dict__)
+            if user.member_info else None
+        )
+        for user in users
+    ]
+    
+@router.get("/search", response_model=List[User])
+async def search_members(
+    name: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(UserModel).join(Member).filter(UserModel.role == "Member")
+
+    if name:
+        search_pattern = f"%{name}%"
+        query = query.filter(Member.full_name.ilike(search_pattern))
+
+    query = query.order_by(Member.full_name.asc())
+    
+    users = query.all()
     return [
         User(
             id=user.id,
