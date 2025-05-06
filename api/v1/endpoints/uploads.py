@@ -13,9 +13,6 @@ from ..models.user import Member, User
 from ..models.finance import Finance
 
 router = APIRouter()
-
-def get_file_handler():
-    return file_handler
 file_handler = FileHandler()
 
 async def save_multiple_images(entity_id: int, files: List[UploadFile], entity_type: str, db: Session):

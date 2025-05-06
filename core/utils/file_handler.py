@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi import UploadFile
 from typing import Optional
 from PIL import Image
+from io import BytesIO
 
 class FileHandler:
     def __init__(self, base_path: str = "uploads"):
@@ -25,7 +26,6 @@ class FileHandler:
         # Jika file adalah gambar dan termasuk dalam kategori yang ditarget
         if file.content_type.startswith("image/") and category in ["news", "events", "finances"]:
             try:
-                from io import BytesIO
                 image = Image.open(BytesIO(content)).convert("RGB")
 
                 # Simpan terkompresi sebagai JPEG
@@ -39,6 +39,7 @@ class FileHandler:
                     await out_file.write(content)
         else:
             # Simpan file secara biasa jika bukan target kategori/gambar
+            print(f"[ERROR] Bukan gambar euy: {file.content_type}")
             async with aiofiles.open(file_path, 'wb') as out_file:
                 await out_file.write(content)
 

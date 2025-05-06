@@ -14,7 +14,7 @@ from ..models.news import News, NewsPhoto
 from ..schemas.news import NewsCreate, NewsResponse, NewsUpdate, NewsPhotoResponse
 from datetime import datetime
 from core.utils.file_handler import FileHandler
-from .uploads import get_file_handler, replace_file, save_multiple_images
+from .uploads import save_multiple_images
 
 
 router = APIRouter()
