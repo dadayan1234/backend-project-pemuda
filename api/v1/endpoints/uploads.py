@@ -41,7 +41,7 @@ async def save_multiple_images(entity_id: int, files: List[UploadFile], entity_t
         elif entity_type == "finances":
             photo = Finance(id=entity_id, document_url=file_url)
         else:
-            raise HTTPException(status_code=400, detail="Invalid entity type")
+            raise HTTPException(status_code=200, detail="File Harus Berupa Gambar")
 
         db.add(photo)
         uploaded_urls.append(file_url)

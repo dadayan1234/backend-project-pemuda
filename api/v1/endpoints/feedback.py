@@ -62,14 +62,20 @@ async def get_single_feedback(
     db: Session = Depends(get_db),
     current_user: User = Depends(verify_token)
 ):
-    if (
-        feedback := db.query(Feedback)
-        .filter(Feedback.id == feedback_id)
-        .first()
-    ):
-        return feedback
-    else:
-        raise HTTPException(status_code=404, detail="Feedback not found")
+    feedback = (db.query(Feedback)
+                .join(Member)
+                .filter(Feedback.id == feedback_id).first()
+
+    ) 
+
+    return FeedbackResponse(
+        id=feedback.id,
+        content=feedback.content,
+        member_id=feedback.member_id,
+        event_id=feedback.event_id,
+        full_name=feedback.member.full_name,  # Ambil dari relasi
+        created_at=feedback.created_at,
+    )
 
 @router.put("/feedback/{feedback_id}", response_model=FeedbackResponse)
 async def update_feedback(
