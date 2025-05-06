@@ -17,14 +17,14 @@ class FileHandler:
         year_month = today.strftime("%Y-%m")
         category_path = Path(self.base_path) / category / year_month
         category_path.mkdir(parents=True, exist_ok=True)
-        
+
         # Paksa simpan sebagai JPEG untuk kompresi
         file_path = category_path / Path(filename).with_suffix(".jpg")
 
         content = await file.read()
 
         # Jika file adalah gambar dan termasuk dalam kategori yang ditarget
-        if file.content_type.startswith("image/") and category in ["news", "events", "finances"]:
+        if file.content_type.startswith("image/"):
             try:
                 image = Image.open(BytesIO(content)).convert("RGB")
 
