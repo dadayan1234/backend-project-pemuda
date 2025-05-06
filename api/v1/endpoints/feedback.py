@@ -46,6 +46,7 @@ async def get_feedbacks(
     result = [
         FeedbackResponse(
             id=att.id,
+            content=att.content,
             member_id=att.member_id,
             event_id=att.event_id,
             full_name=att.member.full_name,  # Ambil dari relasi
