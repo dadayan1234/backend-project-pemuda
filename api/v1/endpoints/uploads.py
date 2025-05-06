@@ -200,20 +200,23 @@ async def delete_event_photo(
 @admin_required()
 async def upload_finance_document(
     finance_id: int,
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...),
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
     finance = db.query(Finance).filter(Finance.id == finance_id).first()
     if not finance:
         raise HTTPException(status_code=200, detail="Finance record not found")
+    
+    uploaded_urls = await save_multiple_images(finance_id, files, "finances", db)
+    return {"uploaded_files": uploaded_urls}
 
-    file_url = await file_handler.save_file(file, f"finances/{finance_id}")
-    file_url = file_url.replace("\\", "/")  # Pastikan selalu menggunakan '/'
-    finance.document_url = file_url
-    db.commit()
+    # file_url = await file_handler.save_file(file, f"finances/{finance_id}")
+    # file_url = file_url.replace("\\", "/")  # Pastikan selalu menggunakan '/'
+    # finance.document_url = file_url
+    # db.commit()
 
-    return {"file_url": file_url}
+    # return {"file_url": file_url}
 
 @router.put("/finances/{finance_id}/document", tags=["Uploads - Finance"])
 @admin_required()
