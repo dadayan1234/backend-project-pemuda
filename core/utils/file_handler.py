@@ -16,31 +16,34 @@ class FileHandler:
         year_month = today.strftime("%Y-%m")
         category_path = Path(self.base_path) / category / year_month
         category_path.mkdir(parents=True, exist_ok=True)
-        file_path = category_path / filename
+        
+        # Paksa simpan sebagai JPEG untuk kompresi
+        file_path = category_path / Path(filename).with_suffix(".jpg")
 
         content = await file.read()
 
-        # Jika file adalah gambar dan perlu dikompres
+        # Jika file adalah gambar dan termasuk dalam kategori yang ditarget
         if file.content_type.startswith("image/") and category in ["news", "events", "finances"]:
             try:
                 from io import BytesIO
-                image = Image.open(BytesIO(content))
-                image = image.convert("RGB")  # pastikan formatnya benar
+                image = Image.open(BytesIO(content)).convert("RGB")
 
-                # Kompresi hingga 75% (quality bisa disesuaikan)
+                # Simpan terkompresi sebagai JPEG
                 with open(file_path, "wb") as f:
-                    image.save(f, format="JPEG", quality=85, optimize=True)
+                    image.save(f, format="JPEG", quality=80, optimize=True)
+                print(f"[INFO] Gambar dikompres dan disimpan ke {file_path}")
             except Exception as e:
-                print(f"Gagal mengompres gambar: {e}")
-                # fallback: simpan tanpa kompresi
+                print(f"[ERROR] Gagal mengompres gambar: {e}")
+                # Fallback
                 async with aiofiles.open(file_path, 'wb') as out_file:
                     await out_file.write(content)
         else:
-            # Jika bukan gambar atau bukan target kategori, simpan biasa
+            # Simpan file secara biasa jika bukan target kategori/gambar
             async with aiofiles.open(file_path, 'wb') as out_file:
                 await out_file.write(content)
 
         return f"/{file_path.as_posix()}"
+
 
         
     # async def save_file(self, file: UploadFile, category: str, filename: str) -> str:
