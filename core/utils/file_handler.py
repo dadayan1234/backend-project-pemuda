@@ -15,17 +15,50 @@ class FileHandler:
         today = datetime.now()
         year_month = today.strftime("%Y-%m")
         category_path = Path(self.base_path) / category / year_month
-
         category_path.mkdir(parents=True, exist_ok=True)
-
         file_path = category_path / filename
 
-        async with aiofiles.open(file_path, 'wb') as out_file:
-            content = await file.read()
-            await out_file.write(content)
+        content = await file.read()
 
-        # Pastikan path dalam format Unix-style (untuk URL)
+        # Jika file adalah gambar dan perlu dikompres
+        if file.content_type.startswith("image/") and category in ["news", "events", "finances"]:
+            try:
+                from io import BytesIO
+                image = Image.open(BytesIO(content))
+                image = image.convert("RGB")  # pastikan formatnya benar
+
+                # Kompresi hingga 75% (quality bisa disesuaikan)
+                with open(file_path, "wb") as f:
+                    image.save(f, format="JPEG", quality=85, optimize=True)
+            except Exception as e:
+                print(f"Gagal mengompres gambar: {e}")
+                # fallback: simpan tanpa kompresi
+                async with aiofiles.open(file_path, 'wb') as out_file:
+                    await out_file.write(content)
+        else:
+            # Jika bukan gambar atau bukan target kategori, simpan biasa
+            async with aiofiles.open(file_path, 'wb') as out_file:
+                await out_file.write(content)
+
         return f"/{file_path.as_posix()}"
+
+        
+    # async def save_file(self, file: UploadFile, category: str, filename: str) -> str:
+    #     """Menyimpan file ke dalam direktori tertentu dengan nama yang diberikan."""
+    #     today = datetime.now()
+    #     year_month = today.strftime("%Y-%m")
+    #     category_path = Path(self.base_path) / category / year_month
+
+    #     category_path.mkdir(parents=True, exist_ok=True)
+
+    #     file_path = category_path / filename
+
+    #     async with aiofiles.open(file_path, 'wb') as out_file:
+    #         content = await file.read()
+    #         await out_file.write(content)
+
+    #     # Pastikan path dalam format Unix-style (untuk URL)
+    #     return f"/{file_path.as_posix()}"
     
     def _resize_and_crop_user(self, image: Image.Image) -> Image.Image:
         """Resize and crop to 4:3 aspect ratio, center crop, final size 400x300"""
