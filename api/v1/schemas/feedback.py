@@ -13,6 +13,7 @@ class FeedbackUpdate(BaseModel):
 
 class FeedbackResponse(FeedbackBase):
     id: int
+    full_name: str
     member_id: int
     event_id: int
     created_at: datetime
