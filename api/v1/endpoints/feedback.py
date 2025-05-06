@@ -38,20 +38,22 @@ async def get_feedbacks(
     db: Session = Depends(get_db),
     current_user: User = Depends(verify_token)
 ):
-    return (
-        db.query(Feedback, Member.full_name)
-        .join(Member, Feedback.member_id == Member.id)
-        .filter(Feedback.event_id == event_id)
-        .with_entities(
-            Feedback.id,
-            Feedback.content,
-            Feedback.event_id,
-            Feedback.member_id,
-            Feedback.created_at,
-            Member.full_name
+    feedback = (db.query(Feedback)
+                .join(Member)
+                .filter(Feedback.event_id == event_id).all()
+                
+    )       
+    result = [
+        FeedbackResponse(
+            id=att.id,
+            member_id=att.member_id,
+            event_id=att.event_id,
+            full_name=att.member.full_name,  # Ambil dari relasi
+            created_at=att.created_at
         )
-        .all()
-    )
+        for att in feedback
+    ]
+    return result
 
 @router.get("/feedback/{feedback_id}", response_model=FeedbackResponse)
 async def get_single_feedback(
