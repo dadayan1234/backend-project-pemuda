@@ -40,6 +40,8 @@ async def save_multiple_images(entity_id: int, files: List[UploadFile], entity_t
             photo = EventPhoto(event_id=entity_id, photo_url=file_url)
         elif entity_type == "finances":
             photo = Finance(id=entity_id, document_url=file_url)
+            setattr(photo, "document_url", file_url)
+            return file_url  # Return early for finance document upload
         else:
             raise HTTPException(status_code=200, detail="File Harus Berupa Gambar")
 
