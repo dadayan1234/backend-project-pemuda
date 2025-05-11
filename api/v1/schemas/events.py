@@ -77,4 +77,14 @@ class EventSearch(BaseModel):
 
     class Config:
         from_attributes = True
+        
+class PaginationMeta(BaseModel):
+        page: int
+        limit: int
+        total: int
+        total_pages: int
+
+class PaginatedEventResponse(BaseModel):
+    data: List[EventResponse]
+    meta: PaginationMeta
 

@@ -1,5 +1,5 @@
 from datetime import timezone
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from typing import List, Optional
@@ -10,7 +10,7 @@ from ..models.events import Event, Attendance
 from ..models.user import Member, User
 from ..schemas.events import (
     EventCreate, EventStatus, EventUpdate, EventResponse,
-    AttendanceCreate, AttendanceUpdate, AttendanceResponse, EventSearch
+    AttendanceCreate, AttendanceUpdate, AttendanceResponse, EventSearch, PaginatedEventResponse
 )
 from ..models.notification import Notification
 from ..models.events import EventPhoto  # Model yang menyimpan foto event
@@ -45,19 +45,46 @@ async def create_event(
 
     return db_event
 
-@router.get("/", response_model=List[EventResponse])
+# @router.get("/", response_model=List[EventResponse])
+# async def get_events(
+#     skip: int = 0,
+#     limit: int = 10,
+#     current_user: User = Depends(verify_token),
+#     db: Session = Depends(get_db)
+# ):  # sourcery skip: inline-immediately-returned-variable
+#     events = (db.query(Event)
+#         .order_by(Event.date.desc())
+#         .offset(skip)
+#         .limit(limit)
+#         .all())
+#     return events
+@router.get("/", response_model=PaginatedEventResponse)
 async def get_events(
-    skip: int = 0,
-    limit: int = 10,
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
-):  # sourcery skip: inline-immediately-returned-variable
+):
+    total = db.query(Event).count()
+    offset = (page - 1) * limit
     events = (db.query(Event)
-        .order_by(Event.date.desc())
-        .offset(skip)
-        .limit(limit)
-        .all())
-    return events
+              .order_by(Event.date.desc())
+              .offset(offset)
+              .limit(limit)
+              .all())
+
+    return {
+        "data": events,
+        "meta": {
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "total_pages": (total + limit - 1) // limit  # pembulatan ke atas
+        }
+    }
+
+
+
 @router.get("/search", response_model=List[EventSearch])
 async def search_events(
     keyword: Optional[str] = None,
