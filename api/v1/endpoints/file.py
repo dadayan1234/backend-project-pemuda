@@ -47,24 +47,24 @@ async def protected_file(
                 )
 
     elif file_path.startswith("events/"):
-        if current_user.role != "Admin":
+        if current_user is None:
             raise HTTPException(
-                status_code=403, 
-                detail="Forbidden: Admin access required"
+                status_code=401, 
+                detail="Unauthorized: Authentication required"
             )
 
     elif file_path.startswith("finances/"):
-        if current_user.role != "Admin":
+        if current_user is None:
             raise HTTPException(
-                status_code=403, 
-                detail="Forbidden: Admin access required"
+                status_code=401, 
+                detail="Unauthorized: Authentication required"
             )
 
     elif not file_path.startswith("news/"):
-        if current_user.role != "Admin":
+        if current_user is None:
             raise HTTPException(
-                status_code=403, 
-                detail="Forbidden: Admin access required"
+                status_code=401, 
+                detail="Unauthorized: Authentication required"
             )
 
     response = FileResponse(physical_path)
