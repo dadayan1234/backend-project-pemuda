@@ -35,8 +35,8 @@ async def get_all_members(
 
     return [
         User(
-            id=user.id,
-            username=user.username,
+            id=user.id, # type: ignore
+            username=user.username, # type: ignore # type: ignore
             role=user.role,
             member_info=MemberResponse.model_validate(user.member_info.__dict__)
             if user.member_info else None
@@ -127,7 +127,7 @@ async def create_user_account(
     db.refresh(member)
 
     return User(
-        id=new_user.id,
+        id=new_user.id, # type: ignore
         username=new_user.username,
         role=new_user.role,
         member_info=MemberResponse.model_validate(member.__dict__)

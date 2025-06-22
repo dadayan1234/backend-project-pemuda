@@ -38,7 +38,7 @@ async def create_event(
         background_tasks.add_task(
             send_notification,
             db=db,
-            user_id=member.id,
+            user_id=member.id, # type: ignore
             title=f"Acara Baru !: {event.title}",
             content=f"Acara Baru Dijadwalkan pada {event.date}",
         )
