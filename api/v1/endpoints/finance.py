@@ -8,7 +8,7 @@ from core.database import get_db, admin_required
 from core.security import verify_token
 from ..models.finance import Finance
 from ..models.user import User
-from ..schemas.finance import FinanceCreate, FinanceUpdate, FinanceResponse, FinanceHistoryResponse
+from ..schemas.finance import FinanceCreate, FinanceResponseDetail, FinanceUpdate, FinanceResponse, FinanceHistoryResponse
 
 router = APIRouter()
 
@@ -128,18 +128,18 @@ async def get_finance_summary(
         "balance": float(income - expense)
     }
 
-@router.get("/{finance_id}", response_model=FinanceResponse)
+@router.get("/{finance_id}", response_model=FinanceResponseDetail)
 async def get_finance(
     finance_id: int,
-    _current_user: User = Depends(verify_token),
+    current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
     finance = db.query(Finance).filter(Finance.id == finance_id).first()
     if not finance:
         raise HTTPException(status_code=404, detail="Finance record not found")
-    # Return response with balance_before set to None
+    # Return response without balance_before
     data = finance.__dict__.copy()
-    data["balance_before"] = None
+    data.pop("balance_before", None)
     return FinanceResponse(**data)
 
 @router.put("/{finance_id}", response_model=FinanceResponse)

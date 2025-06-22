@@ -29,6 +29,17 @@ class FinanceResponse(FinanceBase):
 
     class Config:
         from_attributes = True
+        
+class FinanceResponseDetail(FinanceBase):
+    id: int
+    balance_after: Decimal   # Saldo setelah transaksi ini
+    document_url: Optional[str]
+    created_by: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
 
 class FinanceHistoryResponse(BaseModel):
     transactions: list[FinanceResponse]
