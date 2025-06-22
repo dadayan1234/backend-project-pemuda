@@ -140,7 +140,7 @@ async def get_finance(
     # Return response without balance_before
     data = finance.__dict__.copy()
     data.pop("balance_before", None)
-    return FinanceResponse(**data)
+    return FinanceResponseDetail(**data)
 
 @router.put("/{finance_id}", response_model=FinanceResponse)
 @admin_required()
