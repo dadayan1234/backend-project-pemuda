@@ -131,15 +131,15 @@ async def get_finance_summary(
 @router.get("/{finance_id}", response_model=FinanceResponse)
 async def get_finance(
     finance_id: int,
-    current_user: User = Depends(verify_token),
+    _current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
     finance = db.query(Finance).filter(Finance.id == finance_id).first()
     if not finance:
         raise HTTPException(status_code=404, detail="Finance record not found")
-    # Return response without balance_before
+    # Return response with balance_before set to None
     data = finance.__dict__.copy()
-    data.pop("balance_before", None)
+    data["balance_before"] = None
     return FinanceResponse(**data)
 
 @router.put("/{finance_id}", response_model=FinanceResponse)
