@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -45,12 +46,12 @@ async def get_feedbacks(
     )       
     result = [
         FeedbackResponse(
-            id=att.id,
-            content=att.content,
-            member_id=att.member_id,
-            event_id=att.event_id,
-            full_name=att.member.full_name,  # Ambil dari relasi
-            created_at=att.created_at
+            id=getattr(att, "id", 0),
+            content=getattr(att, "content", ""),
+            member_id=getattr(att, "member_id", 0),
+            event_id=getattr(att, "event_id", 0),
+            full_name=getattr(att.member, "full_name", "") if hasattr(att, "member") else "",
+            created_at=getattr(att, "created_at", None) or datetime.now()
         )
         for att in feedback
     ]
@@ -65,16 +66,18 @@ async def get_single_feedback(
     feedback = (db.query(Feedback)
                 .join(Member)
                 .filter(Feedback.id == feedback_id).first()
+    )
 
-    ) 
+    if not feedback:
+        raise HTTPException(status_code=404, detail="Feedback not found")
 
     return FeedbackResponse(
-        id=feedback.id,
-        content=feedback.content,
-        member_id=feedback.member_id,
-        event_id=feedback.event_id,
-        full_name=feedback.member.full_name,  # Ambil dari relasi
-        created_at=feedback.created_at,
+        id=getattr(feedback, "id", 0),
+        content=getattr(feedback, "content", ""),
+        member_id=getattr(feedback, "member_id", 0),
+        event_id=getattr(feedback, "event_id", 0),
+        full_name=getattr(feedback.member, "full_name", "") if hasattr(feedback, "member") else "",
+        created_at=getattr(feedback, "created_at", None) or datetime.now()
     )
 
 @router.put("/feedback/{feedback_id}", response_model=FeedbackResponse)
@@ -87,7 +90,7 @@ async def update_feedback(
     feedback = db.query(Feedback).filter(Feedback.id == feedback_id).first()
     if not feedback:
         raise HTTPException(status_code=404, detail="Feedback not found")
-    if feedback.member_id != current_user.id:
+    if getattr(feedback, "member_id", None) != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to update this feedback")
 
     for field, value in feedback_update.dict(exclude_unset=True).items():
@@ -106,7 +109,7 @@ async def delete_feedback(
     feedback = db.query(Feedback).filter(Feedback.id == feedback_id).first()
     if not feedback:
         raise HTTPException(status_code=404, detail="Feedback not found")
-    if feedback.member_id != current_user.id:
+    if getattr(feedback, "member_id", None) != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to delete this feedback")
 
     db.delete(feedback)
