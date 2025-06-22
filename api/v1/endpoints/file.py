@@ -40,7 +40,7 @@ async def protected_file(
         parts = file_path.split('/')
         if len(parts) >= 2 and parts[1].isdigit():
             user_id = int(parts[1])
-            if current_user.id != user_id and current_user.role != "Admin":
+            if getattr(current_user, "id", None) != user_id and getattr(current_user, "role", None) != "Admin":
                 raise HTTPException(
                     status_code=403, 
                     detail="Forbidden: You can only access your own files"

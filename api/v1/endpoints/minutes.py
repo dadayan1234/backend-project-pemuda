@@ -47,6 +47,19 @@ async def get_meeting_minutes_by_id(minutes_id: int, db: Session = Depends(get_d
         return meeting
     else:
         raise HTTPException(status_code=404, detail="Meeting minutes not found")
+    
+# ✅ Get Meeting Minutes by Event ID
+@router.get("/event/{event_id}", response_model=List[MeetingMinutesResponse])
+async def get_meeting_minutes_by_event_id(
+    event_id: int,
+    db: Session = Depends(get_db),
+    current_user: int = Depends(verify_token)
+):
+    minutes = db.query(MeetingMinutes).filter(MeetingMinutes.event_id == event_id).all()
+    if not minutes:
+        raise HTTPException(status_code=404, detail="No meeting minutes found for this event")
+    return minutes
+
 
 # ✅ Update Meeting Minutes
 @router.put("/{minutes_id}", response_model=MeetingMinutesResponse)
