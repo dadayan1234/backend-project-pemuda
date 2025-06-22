@@ -18,13 +18,17 @@ async def create_feedback(
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
+    # Cek apakah event ada
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
+
+    # Cek apakah member dari user ini ada
     member = db.query(Member).filter(Member.user_id == current_user.id).first()
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
-    
+
+    # Simpan feedback
     new_feedback = Feedback(
         event_id=event_id,
         member_id=member.id,
@@ -34,7 +38,17 @@ async def create_feedback(
     db.add(new_feedback)
     db.commit()
     db.refresh(new_feedback)
-    return new_feedback
+
+    # Bangun response secara manual agar sesuai dengan schema
+    return FeedbackResponse(
+        id=new_feedback.id,
+        content=new_feedback.content,
+        member_id=new_feedback.member_id,
+        event_id=new_feedback.event_id,
+        full_name=member.full_name,
+        created_at=new_feedback.created_at
+    )
+
 
 @router.get("/event/{event_id}/feedback", response_model=List[FeedbackResponse])
 async def get_feedbacks(
