@@ -23,6 +23,15 @@ class MeetingMinutesUpdate(BaseModel):
     
     class Config:
         arbitrary_types_allowed = True
+        schema_extra = {
+            "example": {
+                "title": "Judul Notulensi yang Diperbarui",
+                "description": "Deskripsi baru untuk notulensi rapat.",
+                "date": "2025-06-24",
+                "document_url": "https://example.com/dokumen/notulensi_baru.pdf",
+                "event_id": 1
+            }
+        }
 
 class MeetingMinutesResponse(MeetingMinutesBase):
     id: int
