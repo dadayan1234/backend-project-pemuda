@@ -25,7 +25,28 @@ def create_access_token(data: dict):  # sourcery skip: simplify-dictionary-updat
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def verify_token(token: str = Depends(oauth2_scheme)):
+# def verify_token(token: str = Depends(oauth2_scheme)):
+#     credentials_exception = HTTPException(
+#         status_code=status.HTTP_401_UNAUTHORIZED,
+#         detail="Could not validate credentials",
+#         headers={"WWW-Authenticate": "Bearer"},
+#     )
+#     try:
+#         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+#         username: str = payload.get("sub")
+#         if username is None:
+#             raise credentials_exception
+#     except JWTError:
+#         raise credentials_exception
+
+
+#     db = SessionLocal()
+#     user = db.query(User).filter(User.username == username).first()
+#     if user is None:
+#         raise credentials_exception
+#     return user
+
+def verify_token(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -39,8 +60,8 @@ def verify_token(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise credentials_exception
 
-
-    db = SessionLocal()
+    # Hapus baris ini: db = SessionLocal()
+    
     user = db.query(User).filter(User.username == username).first()
     if user is None:
         raise credentials_exception
