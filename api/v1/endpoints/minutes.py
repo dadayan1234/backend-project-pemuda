@@ -7,6 +7,7 @@ from ..schemas.minutes import MeetingMinutesBase, MeetingMinutesUpdate, MeetingM
 from core.database import get_db, admin_required
 from core.security import verify_token  # Sesuaikan dengan sistem autentikasi Anda
 from .notification_service import send_notification
+from ..models.user import Member, User
 
 router = APIRouter()
 
@@ -31,18 +32,15 @@ async def create_meeting_minutes(
 
     # --- Logika Notifikasi Dimulai ---
     # Kirim notifikasi ke pengguna yang membuat event
-    if event.created_by:
-        notification_title = f"Notulensi Ditambahkan: {event.title}"
-        notification_content = f"Sebuah notulensi baru telah ditambahkan untuk acara '{event.title}'."
-        
+    members = db.query(User).filter(User.role == "Member").all()
+    for member in members:
         background_tasks.add_task(
             send_notification,
             db=db,
-            user_id=event.created_by,
-            title=notification_title,
-            content=notification_content
-        )
-    # --- Logika Notifikasi Selesai ---
+            user_id=member.id,  # type: ignore
+            title=f"Notulensi Baru: {event.title}",
+            content=f"Sebuah notulensi baru telah ditambahkan untuk acara '{event.title}'."
+        )    # --- Logika Notifikasi Selesai ---
 
     return new_minutes
 
@@ -108,16 +106,16 @@ async def update_meeting_minutes(
     # --- Logika Notifikasi Dimulai ---
     # Dapatkan data event terbaru untuk notifikasi
     final_event = db.query(Event).filter(Event.id == meeting.event_id).first()
-    if final_event and final_event.created_by:
-        notification_title = f"Notulensi Diperbarui: {final_event.title}"
-        notification_content = f"Notulensi untuk acara '{final_event.title}' telah diperbarui."
-        
+    if not final_event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    members = db.query(User).filter(User.role == "Member").all()
+    for member in members:
         background_tasks.add_task(
             send_notification,
             db=db,
-            user_id=final_event.created_by,
-            title=notification_title,
-            content=notification_content
+            user_id=member.id,  # type: ignore
+            title=f"Notulensi Diperbarui: {final_event.title}",
+            content=f"Notulensi untuk acara '{final_event.title}' telah diperbarui."
         )
     # --- Logika Notifikasi Selesai ---
 
