@@ -39,7 +39,7 @@ async def create_event(
             send_notification,
             db=db,
             user_id=member.id, # type: ignore
-            title=f"Acara Baru !: {event.title}",
+            title=f"Acara Baru : {event.title}",
             content=f"Acara Baru Dijadwalkan pada {event.date}",
             # --- TAMBAHKAN PAYLOAD DATA ---
             data={"type": "event", "id": str(db_event.id)}
