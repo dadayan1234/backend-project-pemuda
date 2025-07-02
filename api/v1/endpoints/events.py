@@ -41,6 +41,8 @@ async def create_event(
             user_id=member.id, # type: ignore
             title=f"Acara Baru !: {event.title}",
             content=f"Acara Baru Dijadwalkan pada {event.date}",
+            # --- TAMBAHKAN PAYLOAD DATA ---
+            data={"type": "event", "id": str(db_event.id)}
         )
 
     return db_event
@@ -166,6 +168,7 @@ async def update_event(
                 user_id=member.id,
                 title=f"Acara Dijawalkan Ulang: {db_event.title}",
                 content=f"Acara Dijadwalkan pada {db_event.date}",
+                data={"type": "event", "id": str(db_event.id)}
             )
 
     return db_event

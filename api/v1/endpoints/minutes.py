@@ -39,7 +39,8 @@ async def create_meeting_minutes(
             db=db,
             user_id=member.id,  # type: ignore
             title=f"Notulensi Baru: {event.title}",
-            content=f"Sebuah notulensi baru telah ditambahkan untuk acara '{event.title}'."
+            content=f"Sebuah notulensi baru telah ditambahkan untuk acara '{event.title}'.",
+            data={"type": "event", "id": str(event.id)}
         )    # --- Logika Notifikasi Selesai ---
 
     return new_minutes
@@ -115,7 +116,8 @@ async def update_meeting_minutes(
             db=db,
             user_id=member.id,  # type: ignore
             title=f"Notulensi Diperbarui: {final_event.title}",
-            content=f"Notulensi untuk acara '{final_event.title}' telah diperbarui."
+            content=f"Notulensi untuk acara '{final_event.title}' telah diperbarui.",
+            data={"type": "event", "id": str(event.id)}
         )
     # --- Logika Notifikasi Selesai ---
 

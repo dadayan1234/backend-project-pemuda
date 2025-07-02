@@ -93,7 +93,8 @@ async def create_news(
                     db=db,
                     user_id=member.id,
                     title=f"Berita Baru: {db_news.title}",
-                    content=f"{db_news.description[:100]}..."
+                    content=f"{db_news.description[:30]}...",
+                    data={"type": "news", "id": str(db_news.id)}
                 )
 
         return db_news
