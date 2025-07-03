@@ -39,14 +39,18 @@ class EventResponse(EventBase):
 
     class Config:
         from_attributes = True
-
+class AttendanceStatus(str, Enum):
+    # Sesuaikan nilainya agar sama persis dengan Enum di database
+    hadir = "Hadir"
+    izin = "Izin"
+    alfa = "Alfa"
 class AttendanceCreate(BaseModel):
     member_id: int
-    status: str
+    status: AttendanceStatus
     notes: Optional[str] = None
 
 class AttendanceUpdate(BaseModel):
-    status: str
+    status: AttendanceStatus
     notes: Optional[str] = None
 
 class AttendanceResponse(BaseModel):
@@ -54,7 +58,7 @@ class AttendanceResponse(BaseModel):
     member_id: int
     event_id: int
     full_name: str
-    status: str
+    status: AttendanceStatus
     notes: Optional[str]
     created_at: datetime
     updated_at: datetime

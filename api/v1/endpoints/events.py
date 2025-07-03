@@ -17,6 +17,14 @@ from ..models.events import EventPhoto  # Model yang menyimpan foto event
 from core.utils.file_handler import FileHandler  # Fungsi untuk menghapus file
 from .notification_service import send_notification
 
+import io
+from fastapi.responses import StreamingResponse
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+
 router = APIRouter()
 
 @router.post("/", response_model=EventResponse)
@@ -292,3 +300,89 @@ async def get_attendance(
 
     return result
 
+@router.get("/{event_id}/attendance/pdf", response_class=StreamingResponse)
+async def download_attendance_pdf(
+    event_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(verify_token)
+):
+    """
+    Endpoint untuk mengunduh daftar hadir event dalam format PDF.
+    """
+    # 1. Ambil data event dari database
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # 2. Ambil data kehadiran, urutkan berdasarkan nama untuk kerapian
+    attendances = (
+        db.query(Attendance)
+        .join(Member)
+        .filter(Attendance.event_id == event_id)
+        .order_by(Member.full_name.asc())
+        .all()
+    )
+
+    if not attendances:
+        raise HTTPException(
+            status_code=404, 
+            detail="Belum ada data kehadiran untuk event ini."
+        )
+
+    # 3. Buat PDF di dalam memori
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=1*inch, bottomMargin=1*inch)
+    
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Tambahkan Judul Event dan Tanggal
+    elements.append(Paragraph(f"Daftar Hadir Peserta", styles['Title']))
+    elements.append(Spacer(1, 0.2*inch))
+    elements.append(Paragraph(f"<b>Acara:</b> {event.title}", styles['Normal']))
+    elements.append(Paragraph(f"<b>Tanggal:</b> {event.date.strftime('%d %B %Y')}", styles['Normal']))
+    elements.append(Spacer(1, 0.4*inch))
+
+    # 4. Siapkan data untuk tabel
+    table_data = [['No.', 'Nama Peserta', 'Status', 'Keterangan']]
+    table_data.extend([
+        [
+            str(i + 1),
+            att.member.full_name,
+            str(getattr(att, "status", None) or "N/A"),
+            str(getattr(att, "notes", "") or "")
+        ]
+        for i, att in enumerate(attendances)
+    ])
+    # 5. Buat dan styling tabel
+    table = Table(table_data, colWidths=[0.5*inch, 3*inch, 1.5*inch, 2*inch])
+    
+    style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4a4a4a')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f0f0f0')),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+    ])
+    table.setStyle(style)
+    
+    elements.append(table)
+
+    # Build PDF
+    doc.build(elements)
+    
+    buffer.seek(0) # Pindahkan kursor ke awal buffer
+
+    # 6. Kirim response sebagai file yang bisa diunduh
+    safe_title = "".join(str(c) for c in event.title if str(c).isalnum() or c in (' ', '_')).rstrip()
+    filename = f"daftar_hadir_{safe_title.replace(' ', '_').lower()}.pdf"
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
