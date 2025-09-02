@@ -224,22 +224,23 @@ async def create_or_update_attendance(
     updated_attendances = []
 
     for attendance in attendances:
-        if (
-            existing_attendance := db.query(Attendance)
+        existing_attendance = (
+            db.query(Attendance)
             .filter(
                 Attendance.event_id == event_id,
                 Attendance.member_id == attendance.member_id,
             )
             .first()
-        ):
-            # Jika sudah ada, update (PUT)
+        )
+        if existing_attendance:
+            # Update jika sudah ada
             for field, value in attendance.dict(exclude_unset=True).items():
                 setattr(existing_attendance, field, value)
             db.commit()
             db.refresh(existing_attendance)
             updated_attendances.append(existing_attendance)
         else:
-            # Jika belum ada, tambahkan baru (POST)
+            # Tambah baru jika belum ada
             new_attendance = Attendance(
                 event_id=event_id,
                 **attendance.dict()
@@ -249,7 +250,21 @@ async def create_or_update_attendance(
             db.refresh(new_attendance)
             updated_attendances.append(new_attendance)
 
-    return updated_attendances
+    # Bentuk response manual agar ada full_name
+    response_data = []
+    for att in updated_attendances:
+        response_data.append({
+            "id": att.id,
+            "member_id": att.member_id,
+            "event_id": att.event_id,
+            "full_name": att.member.full_name if att.member else "",
+            "status": att.status,
+            "notes": att.notes,
+            "created_at": att.created_at,
+            "updated_at": att.updated_at
+        })
+
+    return response_data
 
 @router.put("/{event_id}/attendance/{member_id}", response_model=AttendanceResponse)
 @admin_required()

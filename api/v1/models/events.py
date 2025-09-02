@@ -2,6 +2,9 @@ from sqlalchemy import Column, Integer, String, DateTime, Time, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from core.database import Base
+from sqlalchemy.orm import column_property
+from sqlalchemy import select
+from api.v1.models.user import Member
 
 
 class Event(Base):
@@ -47,4 +50,12 @@ class Attendance(Base):
 
     event = relationship("Event", back_populates="attendances")
     member = relationship("Member", back_populates="attendances")
+    
+    # Auto-load full_name dari join Member
+    full_name = column_property(
+        select(Member.full_name)
+        .where(Member.id == member_id)
+        .correlate_except(Member)
+        .scalar_subquery()
+    )
     
