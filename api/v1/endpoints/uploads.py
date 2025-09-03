@@ -98,32 +98,39 @@ async def replace_file(
 @admin_required()
 async def upload_or_replace_news_photo(
     news_id: int,
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...),  # tetap pakai List agar kompatibel
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
     """
     Upload atau replace foto utama News.
-    Jika foto sudah ada, hapus fisik lama dan update path baru di database.
+    Jika sudah ada foto lama → hapus fisik & update DB.
+    Jika belum ada → tambahkan baru.
+    Selalu hanya pakai file pertama dari request.
     """
     # 1. Pastikan news ada
     news = db.query(News).filter(News.id == news_id).first()
     if not news:
         raise HTTPException(status_code=404, detail="News not found")
 
-    # 2. Validasi file harus gambar
-    if not file.content_type.startswith("image/"): # type: ignore
+    # 2. Ambil file pertama
+    if not files or len(files) == 0:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+    file = files[0]
+
+    # 3. Validasi harus gambar
+    if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
 
-    # 3. Cari record NewsPhoto yang sudah ada (jika ada, replace)
+    # 4. Cari record foto lama
     existing_photo = db.query(NewsPhoto).filter(NewsPhoto.news_id == news_id).first()
 
-    # 4. Generate filename baru
+    # 5. Generate filename baru
     timestamp = int(datetime.now().timestamp() * 1000)
-    file_extension = os.path.splitext(file.filename)[1] # type: ignore
+    file_extension = os.path.splitext(file.filename)[1]
     filename = f"news_{news_id}_{timestamp}{file_extension}"
 
-    # 5. Simpan file baru
+    # 6. Simpan file baru
     today = datetime.now().strftime("%Y-%m-%d")
     file_url = await file_handler.save_file(file, f"news/{today}", filename)
     file_url = file_url.replace("\\", "/")
@@ -140,7 +147,11 @@ async def upload_or_replace_news_photo(
 
     db.commit()
 
-    return {"photo_url": file_url, "message": "News photo uploaded successfully"}
+    return {
+        "photo_url": file_url,
+        "message": "News photo uploaded successfully (auto-replace mode)"
+    }
+
 
 
 @router.put("/news/photos/{photo_id}", tags=["Uploads - News"])
