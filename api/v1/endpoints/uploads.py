@@ -78,21 +78,70 @@ async def replace_file(
     return file_url
 
 
+# @router.post("/news/{news_id}/photos", tags=["Uploads - News"])
+# @admin_required()
+# async def upload_news_photos(
+#     news_id: int,
+#     files: List[UploadFile] = File(...),
+#     current_user: User = Depends(verify_token),
+#     db: Session = Depends(get_db)
+# ):
+#     """Upload multiple images for a news item."""
+#     news = db.query(News).filter(News.id == news_id).first()
+#     if not news:
+#         raise HTTPException(status_code=200, detail="News not found")
+
+#     uploaded_urls = await save_multiple_images(news_id, files, "news", db)
+#     return {"uploaded_files": uploaded_urls}
+
 @router.post("/news/{news_id}/photos", tags=["Uploads - News"])
 @admin_required()
-async def upload_news_photos(
+async def upload_or_replace_news_photo(
     news_id: int,
-    files: List[UploadFile] = File(...),
+    file: UploadFile = File(...),
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    """Upload multiple images for a news item."""
+    """
+    Upload atau replace foto utama News.
+    Jika foto sudah ada, hapus fisik lama dan update path baru di database.
+    """
+    # 1. Pastikan news ada
     news = db.query(News).filter(News.id == news_id).first()
     if not news:
-        raise HTTPException(status_code=200, detail="News not found")
+        raise HTTPException(status_code=404, detail="News not found")
 
-    uploaded_urls = await save_multiple_images(news_id, files, "news", db)
-    return {"uploaded_files": uploaded_urls}
+    # 2. Validasi file harus gambar
+    if not file.content_type.startswith("image/"): # type: ignore
+        raise HTTPException(status_code=400, detail="File must be an image")
+
+    # 3. Cari record NewsPhoto yang sudah ada (jika ada, replace)
+    existing_photo = db.query(NewsPhoto).filter(NewsPhoto.news_id == news_id).first()
+
+    # 4. Generate filename baru
+    timestamp = int(datetime.now().timestamp() * 1000)
+    file_extension = os.path.splitext(file.filename)[1] # type: ignore
+    filename = f"news_{news_id}_{timestamp}{file_extension}"
+
+    # 5. Simpan file baru
+    today = datetime.now().strftime("%Y-%m-%d")
+    file_url = await file_handler.save_file(file, f"news/{today}", filename)
+    file_url = file_url.replace("\\", "/")
+
+    if existing_photo:
+        # Hapus file lama secara fisik
+        file_handler.delete_image(existing_photo.photo_url)
+        # Update path di database
+        existing_photo.photo_url = file_url
+    else:
+        # Buat record baru jika belum ada
+        new_photo = NewsPhoto(news_id=news_id, photo_url=file_url)
+        db.add(new_photo)
+
+    db.commit()
+
+    return {"photo_url": file_url, "message": "News photo uploaded successfully"}
+
 
 @router.put("/news/photos/{photo_id}", tags=["Uploads - News"])
 @admin_required()
