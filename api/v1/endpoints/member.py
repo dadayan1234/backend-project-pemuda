@@ -183,6 +183,30 @@ async def update_biodata(
     
     return MemberResponse.model_validate(member.__dict__)
 
+@router.put("/biodata/{member_id}", response_model=MemberResponse)
+async def update_member_biodata(
+    member_id: int,
+    biodata: MemberUpdate,
+    current_user: User = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    # Hanya Admin yang bisa update biodata member lain
+    if current_user.role != "Admin":
+        raise HTTPException(status_code=403, detail="Not authorized, admin only")
+
+    member = db.query(Member).filter(Member.user_id == member_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    update_data = biodata.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(member, key, value)
+
+    db.commit()
+    db.refresh(member)
+
+    return MemberResponse.model_validate(member.__dict__)
+
 @router.delete("/user/{user_id}")
 @admin_required()
 async def delete_user(
