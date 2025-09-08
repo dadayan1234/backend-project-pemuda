@@ -35,7 +35,7 @@ async def get_all_members(
 
     return [
         User(
-            id=user.id, # type: ignore
+            id=user.id,             # type: ignore
             username=user.username, # type: ignore # type: ignore
             role=user.role,
             member_info=MemberResponse.model_validate(user.member_info.__dict__)

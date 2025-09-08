@@ -10,6 +10,7 @@ class Finance(Base):
     amount = Column(DECIMAL(12, 2), nullable=False)
     category = Column(Enum("Pemasukan", "Pengeluaran"), nullable=False)
     date = Column(DateTime, nullable=False)
+    title = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
     balance_after = Column(DECIMAL(10, 2), nullable=False, comment="Saldo setelah transaksi ini")
     document_url = Column(String(255))

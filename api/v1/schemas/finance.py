@@ -7,6 +7,7 @@ class FinanceBase(BaseModel):
     amount: Decimal
     category: str  # "Pemasukan" or "Pengeluaran"
     date: datetime
+    title: str
     description: str
 
 class FinanceCreate(FinanceBase):
@@ -16,6 +17,7 @@ class FinanceUpdate(BaseModel):
     amount: Optional[Decimal] = None
     category: Optional[str] = None
     date: Optional[datetime] = None
+    title: Optional[str] = None
     description: Optional[str] = None
 
 class FinanceResponse(FinanceBase):
