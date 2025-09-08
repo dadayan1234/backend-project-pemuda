@@ -103,7 +103,7 @@ async def create_news(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.put("/news/{news_id}", response_model=NewsResponse)
+@router.put("/{news_id}", response_model=NewsResponse)
 @admin_required()
 async def update_news(
     news_id: int,
