@@ -15,10 +15,16 @@ from ..schemas.news import NewsCreate, NewsResponse, NewsUpdate, NewsPhotoRespon
 from datetime import datetime
 from core.utils.file_handler import FileHandler
 from .uploads import save_multiple_images
+import re
 
 
 router = APIRouter()
 file_handler = FileHandler()
+
+def strip_html_tags(text: str) -> str:
+    """Hapus semua tag HTML dari teks."""
+    clean = re.compile('<.*?>')
+    return re.sub(clean, '', text or '').strip()
 
 
 @router.get("/", response_model=List[NewsResponse])
@@ -87,13 +93,16 @@ async def create_news(
         # Kirim notifikasi jika published
         if is_published:
             members = db.query(User).filter(User.role == "Member").all()
+            normalized_description = strip_html_tags(db_news.description)
+            preview = (normalized_description[:30] + "...") if len(normalized_description) > 30 else normalized_description
+
             for member in members:
                 background_tasks.add_task(
                     send_notification,
                     db=db,
                     user_id=member.id,
                     title=f"Berita Baru: {db_news.title}",
-                    content=f"{db_news.description[:30]}...",
+                    content=preview,
                     data={"type": "news", "id": str(db_news.id)}
                 )
 
@@ -102,6 +111,7 @@ async def create_news(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.put("/{news_id}", response_model=NewsResponse)
 @admin_required()
@@ -112,33 +122,119 @@ async def update_news(
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    # Ambil data berita berdasarkan ID
     db_news = db.query(News).filter(News.id == news_id).first()
     if not db_news:
         raise HTTPException(status_code=404, detail="News not found")
 
-    # Update data yang ada
+    # Update data
     for field, value in news_update.dict(exclude_unset=True).items():
         setattr(db_news, field, value)
 
-    # Commit perubahan ke database
     db.commit()
     db.refresh(db_news)
 
-    # Cek apakah is_published diubah menjadi True
+    # Kirim notifikasi jika baru dipublish
     if news_update.is_published:
-        # Kirim notifikasi kepada semua user yang berperan sebagai Member
         members = db.query(User).filter(User.role == "Member").all()
+        normalized_description = strip_html_tags(db_news.description)
+        preview = (normalized_description[:30] + "...") if len(normalized_description) > 30 else normalized_description
+
         for member in members:
             background_tasks.add_task(
                 send_notification,
                 db=db,
                 user_id=member.id,
                 title=f"Berita Terbaru: {db_news.title}",
-                content=f"Berita baru telah dipublikasikan: {db_news.title}",
+                content=preview,
+                data={"type": "news", "id": str(db_news.id)}
             )
 
     return db_news
+
+# @router.post("/", response_model=NewsResponse)
+# @admin_required()
+# async def create_news(
+#     background_tasks: BackgroundTasks,
+#     title: str = Form(...),
+#     description: str = Form(...),
+#     date: datetime = Form(...),
+#     is_published: bool = Form(True),
+#     files: Optional[List[UploadFile]] = File(None),
+#     current_user: User = Depends(verify_token),
+#     db: Session = Depends(get_db),
+# ):
+#     try:
+#         # Buat objek dan simpan
+#         db_news = News(
+#             title=title,
+#             description=description,
+#             date=date,
+#             is_published=is_published,
+#             created_by=current_user.id,
+#         )
+#         db.add(db_news)
+#         db.commit()
+#         db.refresh(db_news)
+
+#         # Upload foto (jika ada)
+#         if files:
+#             await save_multiple_images(db_news.id, files, "news", db)
+
+#         # Kirim notifikasi jika published
+#         if is_published:
+#             members = db.query(User).filter(User.role == "Member").all()
+#             for member in members:
+#                 background_tasks.add_task(
+#                     send_notification,
+#                     db=db,
+#                     user_id=member.id,
+#                     title=f"Berita Baru: {db_news.title}",
+#                     content=f"{db_news.description[:30]}...",
+#                     data={"type": "news", "id": str(db_news.id)}
+#                 )
+
+#         return db_news
+
+#     except Exception as e:
+#         db.rollback()
+#         raise HTTPException(status_code=500, detail=str(e))
+
+# @router.put("/{news_id}", response_model=NewsResponse)
+# @admin_required()
+# async def update_news(
+#     news_id: int,
+#     news_update: NewsUpdate,
+#     background_tasks: BackgroundTasks,
+#     current_user: User = Depends(verify_token),
+#     db: Session = Depends(get_db)
+# ):
+#     # Ambil data berita berdasarkan ID
+#     db_news = db.query(News).filter(News.id == news_id).first()
+#     if not db_news:
+#         raise HTTPException(status_code=404, detail="News not found")
+
+#     # Update data yang ada
+#     for field, value in news_update.dict(exclude_unset=True).items():
+#         setattr(db_news, field, value)
+
+#     # Commit perubahan ke database
+#     db.commit()
+#     db.refresh(db_news)
+
+#     # Cek apakah is_published diubah menjadi True
+#     if news_update.is_published:
+#         # Kirim notifikasi kepada semua user yang berperan sebagai Member
+#         members = db.query(User).filter(User.role == "Member").all()
+#         for member in members:
+#             background_tasks.add_task(
+#                 send_notification,
+#                 db=db,
+#                 user_id=member.id,
+#                 title=f"Berita Terbaru: {db_news.title}",
+#                 content=f"Berita baru telah dipublikasikan: {db_news.title}",
+#             )
+
+#     return db_news
 
 
 @router.delete("/{news_id}")
