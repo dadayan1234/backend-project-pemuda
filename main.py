@@ -166,7 +166,7 @@ def verify_signature(request_body: bytes, signature: str, secret: str) -> bool:
 
 
 # --- ENDPOINT WEBHOOK ---
-@app.post("/webhook")
+@app.post("/webhookdeploy")
 async def github_webhook(
     request: Request, 
     event: GitHubPushEvent, 
