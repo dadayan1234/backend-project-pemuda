@@ -171,3 +171,7 @@ cython_debug/
 .pypirc
 
 uploads/
+alembic.ini
+alembic/
+env.py
+ca.pem
