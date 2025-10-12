@@ -147,7 +147,6 @@ def verify_signature(request_body: bytes, signature: str, secret: str) -> bool:
     if sha_name != 'sha256':
         return False
 
-    # Hitung HMAC dari raw request body (request_body)
     mac = hmac.new(secret.encode('utf-8'), request_body, hashlib.sha256)
     
     # Bandingkan dengan aman hasil hitungan dengan signature yang dikirim GitHub
