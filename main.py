@@ -203,12 +203,10 @@ async def github_webhook(
     if payload.ref == "refs/heads/main":
         print(f"Webhook Success: Push event received on {payload.ref}. Triggering deployment.")
         
-        # Jalankan deployment di Background
         background_tasks.add_task(run_deployment)
 
         return {"status": "Deployment task accepted and running in background"}
-    
-    # Abaikan event lain
+
     print(f"Webhook Ignored: Event on {payload.ref} skipped.")
     return {"status": "Event ignored (not a push to main)"}
 
