@@ -36,14 +36,12 @@ if not WEBHOOK_SECRET:
 # --- MODEL PYDANTIC (FIX 422) ---
 
 class GitHubPushEvent(BaseModel):
-    # Field yang wajib Anda butuhkan
+    # Field wajib dari payload GitHub:
     ref: str  
-    
-    # Field lain yang mungkin Anda periksa
     repository: Dict[str, Any]
     sender: Dict[str, Any]
     
-    # TAMBAHAN KRITIS: Memberi tahu Pydantic untuk MENGABAIKAN field JSON tambahan 
+    # PERBAIKAN KRITIS 422: Abaikan semua field lain dari payload besar GitHub
     model_config = ConfigDict(extra='ignore')
 
 app = FastAPI(
@@ -183,32 +181,22 @@ def run_deployment():
 # --- ENDPOINT UTAMA (/webhook) ---
 
 @app.post("/webhookdeploy", status_code=status.HTTP_202_ACCEPTED)
-async def github_webhook(
-    request: Request, 
-    payload: GitHubPushEvent, # Menggunakan model yang sudah di-fix (extra='ignore')
-    background_tasks: BackgroundTasks
-):
-    # 1. Ambil raw body (raw bytes) untuk verifikasi HMAC
+async def github_webhook(request: Request, background_tasks: BackgroundTasks):
     body = await request.body()
     signature = request.headers.get("X-Hub-Signature-256")
-    
-    # 2. Verifikasi Secret Key
+
     if not verify_signature(body, signature, WEBHOOK_SECRET):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Invalid signature: Access Denied"
-        )
+        raise HTTPException(status_code=401, detail="Invalid signature")
 
-    # 3. Cek Event: Hanya proses 'push' ke branch 'main'
-    if payload.ref == "refs/heads/main":
-        print(f"Webhook Success: Push event received on {payload.ref}. Triggering deployment.")
-        
+    payload = await request.json()
+    ref = payload.get("ref")
+
+    if ref == "refs/heads/main":
         background_tasks.add_task(run_deployment)
+        return {"status": "Deployment triggered"}
+    
+    return {"status": f"Ignored ref {ref}"}
 
-        return {"status": "Deployment task accepted and running in background"}
-
-    print(f"Webhook Ignored: Event on {payload.ref} skipped.")
-    return {"status": "Event ignored (not a push to main)"}
 
 if __name__ == "__main__":
     import uvicorn
