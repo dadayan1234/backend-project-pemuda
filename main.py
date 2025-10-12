@@ -13,7 +13,7 @@ from starlette.status import HTTP_401_UNAUTHORIZED
 from core.database import SessionLocal
 from core.security import verify_token
 import os
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 import hmac
 import hashlib
@@ -30,14 +30,21 @@ from fastapi import (
 # GITHUB_WEBHOOK_SECRET harus diatur di file .env Anda
 WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET") 
 if not WEBHOOK_SECRET:
-    raise ValueError("GITHUB_WEBHOOK_SECRET tidak ditemukan di .env!")
+    raise ValueError("GITHUB_WEBHOOK_SECRET tidak ditemukan. Setel di file .env.")
 
-# --- MODEL untuk Payload GitHub ---
+
+# --- MODEL PYDANTIC (FIX 422) ---
+
 class GitHubPushEvent(BaseModel):
-    ref: str
-    after: str
+    # Field yang wajib Anda butuhkan
+    ref: str  
+    
+    # Field lain yang mungkin Anda periksa
     repository: Dict[str, Any]
     sender: Dict[str, Any]
+    
+    # TAMBAHAN KRITIS: Memberi tahu Pydantic untuk MENGABAIKAN field JSON tambahan 
+    model_config = ConfigDict(extra='ignore')
 
 app = FastAPI(
     title="OPN API",
@@ -124,36 +131,17 @@ async def auth_middleware(request: Request, call_next):
 #     return await call_next(request)
 
 # app.py atau main.py di proyek FastAPI Anda
-# --- FUNGSI UTAMA DEPLOYMENT ---
-def run_deployment():
-    """Menjalankan script deploy.sh di latar belakang."""
-    
-    # Path ke script deployment Anda (pastikan ini path yang benar)
-    SCRIPT_PATH = "/opt/backend-project-pemuda/deploy.sh" 
-    
-    print(f"[{os.getpid()}] Deployment: Memulai script {SCRIPT_PATH}")
-    
-    # Jalankan deploy.sh. Kita gunakan shell=True agar 'source .env' di deploy.sh berfungsi
-    result = subprocess.run(
-        ["/bin/bash", SCRIPT_PATH], 
-        check=False, # Jangan langsung raise error jika script gagal
-        capture_output=True, 
-        text=True,
-        cwd="/opt/backend-project-pemuda"
-    )
-    
-    if result.returncode == 0:
-        print(f"[{os.getpid()}] Deployment Selesai Sukses. Output:\n{result.stdout}")
-    else:
-        print(f"[{os.getpid()}] Deployment GAGAL (Kode {result.returncode}). Error:\n{result.stderr}")
+# --- FUNGSI KEAMANAN ---
 
+# --- FUNGSI KEAMANAN (FIX SCOPING) ---
 
-# --- FUNGSI KEAMANAN (Verifikasi Signature GitHub) ---
 def verify_signature(request_body: bytes, signature: str, secret: str) -> bool:
+    """Memverifikasi signature (X-Hub-Signature-256) dari GitHub."""
     if not signature:
         return False
     
     try:
+        # Signature dikirim sebagai 'sha256=HEX_DIGEST'
         sha_name, signature_digest = signature.split('=')
     except ValueError:
         return False
@@ -161,40 +149,67 @@ def verify_signature(request_body: bytes, signature: str, secret: str) -> bool:
     if sha_name != 'sha256':
         return False
 
+    # Hitung HMAC dari raw request body (request_body)
     mac = hmac.new(secret.encode('utf-8'), request_body, hashlib.sha256)
+    
+    # Bandingkan dengan aman hasil hitungan dengan signature yang dikirim GitHub
     return hmac.compare_digest(mac.hexdigest(), signature_digest)
 
 
-# --- ENDPOINT WEBHOOK ---
-@app.post("/webhookdeploy")
+# --- FUNGSI DEPLOYMENT (BERJALAN DI BACKGROUND) ---
+
+def run_deployment():
+    """Menjalankan script deploy.sh."""
+    
+    SCRIPT_PATH = "/opt/backend-project-pemuda/deploy.sh" 
+    DEPLOY_DIR = "/opt/backend-project-pemuda"
+    
+    # Pastikan Anda menggunakan pnpm run build:simple (atau npm install -g pnpm && pnpm install)
+    # Ini sangat penting agar instalasi dependencies di server Anda sukses
+    
+    print(f"Deployment: Memulai script {SCRIPT_PATH}")
+    
+    # Jalankan deploy.sh
+    subprocess.run(
+        ["/bin/bash", SCRIPT_PATH], 
+        check=False,
+        capture_output=True, 
+        text=True,
+        cwd=DEPLOY_DIR,
+    )
+    # ... (log output sukses/gagal di sini) ...
+
+
+# --- ENDPOINT UTAMA (/webhook) ---
+
+@app.post("/webhookdeploy", status_code=status.HTTP_202_ACCEPTED)
 async def github_webhook(
     request: Request, 
-    event: GitHubPushEvent, 
-    background_tasks: BackgroundTasks # Untuk menjalankan deploy.sh di background
+    payload: GitHubPushEvent, # Menggunakan model yang sudah di-fix (extra='ignore')
+    background_tasks: BackgroundTasks
 ):
-    # 1. Ambil Signature dan Body
-    signature = request.headers.get("X-Hub-Signature-256")
+    # 1. Ambil raw body (raw bytes) untuk verifikasi HMAC
     body = await request.body()
-
+    signature = request.headers.get("X-Hub-Signature-256")
+    
     # 2. Verifikasi Secret Key
     if not verify_signature(body, signature, WEBHOOK_SECRET):
-        print(f"Webhook Failed: Invalid signature from {request.client.host}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="Invalid signature: Access Denied"
         )
 
     # 3. Cek Event: Hanya proses 'push' ke branch 'main'
-    if event.ref == "refs/heads/main":
-        print("Webhook Success: Push event received for main branch.")
+    if payload.ref == "refs/heads/main":
+        print(f"Webhook Success: Push event received on {payload.ref}. Triggering deployment.")
         
-        # Tambahkan fungsi deployment ke background task
-        # Service akan langsung merespons ke GitHub 200 OK sebelum deployment selesai
+        # Jalankan deployment di Background
         background_tasks.add_task(run_deployment)
 
-        return {"status": "Deployment task added to background"}
+        return {"status": "Deployment task accepted and running in background"}
     
     # Abaikan event lain
+    print(f"Webhook Ignored: Event on {payload.ref} skipped.")
     return {"status": "Event ignored (not a push to main)"}
 
 if __name__ == "__main__":
