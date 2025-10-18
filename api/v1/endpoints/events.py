@@ -24,8 +24,23 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import inch
+from datetime import datetime, timezone
+import locale
 
 router = APIRouter()
+
+# Pastikan locale Indonesia aktif
+try:
+    locale.setlocale(locale.LC_TIME, "id_ID.utf8")
+except locale.Error:
+    # fallback untuk sistem tanpa locale Indonesia
+    locale.setlocale(locale.LC_TIME, "C")
+
+# 🔹 Helper untuk format tanggal lokal (Senin, 14 Oktober 2025 - 13:45)
+def format_event_datetime(dt: datetime) -> str:
+    if not dt:
+        return "-"
+    return dt.astimezone(timezone.utc).strftime("%A, %d %B %Y - %H:%M")
 
 @router.post("/", response_model=EventResponse)
 @admin_required()
@@ -40,20 +55,23 @@ async def create_event(
     db.commit()
     db.refresh(db_event)
 
+    # Format tanggal event dengan format Indonesia
+    formatted_date = format_event_datetime(db_event.date)
+
     # Notifikasi ke semua member
     members = db.query(User).filter(User.role == "Member").all()
     for member in members:
         background_tasks.add_task(
             send_notification,
             db=db,
-            user_id=member.id, # type: ignore
-            title=f"Acara Baru : {event.title}",
-            content=f"Acara Baru Dijadwalkan pada {event.date}",
-            # --- TAMBAHKAN PAYLOAD DATA ---
+            user_id=member.id,
+            title=f"Acara Baru: {event.title}",
+            content=f"📅 Jadwal: {formatted_date}",
             data={"type": "event", "id": str(db_event.id)}
         )
 
     return db_event
+
 
 # @router.get("/", response_model=List[EventResponse])
 # async def get_events(
@@ -147,6 +165,40 @@ async def get_event(
     else:
         raise HTTPException(status_code=404, detail="Event not found")
 
+# @router.put("/{event_id}", response_model=EventResponse)
+# @admin_required()
+# async def update_event(
+#     event_id: int,
+#     event_update: EventUpdate,
+#     background_tasks: BackgroundTasks,
+#     current_user: User = Depends(verify_token),
+#     db: Session = Depends(get_db)
+# ):
+#     db_event = db.query(Event).filter(Event.id == event_id).first()
+#     if not db_event:
+#         raise HTTPException(status_code=404, detail="Event not found")
+
+#     for field, value in event_update.dict(exclude_unset=True).items():
+#         setattr(db_event, field, value)
+
+#     db.commit()
+#     db.refresh(db_event)
+
+#     # Kirim notifikasi jika tanggal diubah
+#     if event_update.date:
+#         members = db.query(User).filter(User.role == "Member").all()
+#         for member in members:
+#             background_tasks.add_task(
+#                 send_notification,
+#                 db=db,
+#                 user_id=member.id,
+#                 title=f"Acara Dijawalkan Ulang: {db_event.title}",
+#                 content=f"Acara Dijadwalkan pada {db_event.date}",
+#                 data={"type": "event", "id": str(db_event.id)}
+#             )
+
+#     return db_event
+
 @router.put("/{event_id}", response_model=EventResponse)
 @admin_required()
 async def update_event(
@@ -160,26 +212,33 @@ async def update_event(
     if not db_event:
         raise HTTPException(status_code=404, detail="Event not found")
 
+    # Simpan tanggal lama untuk deteksi perubahan waktu
+    old_date = db_event.date
+
+    # Lakukan update field
     for field, value in event_update.dict(exclude_unset=True).items():
         setattr(db_event, field, value)
 
     db.commit()
     db.refresh(db_event)
 
-    # Kirim notifikasi jika tanggal diubah
-    if event_update.date:
+    # 🔹 Kirim notifikasi HANYA jika tanggal berubah
+    if event_update.date and event_update.date != old_date:
+        formatted_date = format_event_datetime(db_event.date)
         members = db.query(User).filter(User.role == "Member").all()
+
         for member in members:
             background_tasks.add_task(
                 send_notification,
                 db=db,
                 user_id=member.id,
-                title=f"Acara Dijawalkan Ulang: {db_event.title}",
-                content=f"Acara Dijadwalkan pada {db_event.date}",
+                title=f"📅 Jadwal Diubah: {db_event.title}",
+                content=f"Acara dijadwalkan ulang ke {formatted_date}",
                 data={"type": "event", "id": str(db_event.id)}
             )
 
     return db_event
+
 
 @router.delete("/{event_id}")
 @admin_required()
