@@ -8,7 +8,8 @@ from core.database import get_db, admin_required
 from core.security import verify_token
 from ..models.finance import Finance
 from ..models.user import User
-from ..schemas.finance import FinanceCreate, FinanceResponseDetail, FinanceUpdate, FinanceResponse, FinanceHistoryResponse
+from ..schemas.finance import FinanceCreate, FinanceResponseDetail, FinanceUpdate, FinanceResponse, FinanceHistoryResponse, PaginatedFinanceResponse
+from fastapi import Query
 
 router = APIRouter()
 
@@ -99,59 +100,76 @@ async def get_finance_history(
         current_balance=get_current_balance(db)
     )
 
-@router.get("/history/page/{page_number}", response_model=FinanceHistoryResponse)
+
+@router.get("/history/page", response_model=PaginatedFinanceResponse)
 async def get_finance_history_paginated(
-    page_number: int,
-    page_size: int = 10,
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
     category: Optional[str] = None,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     current_user: User = Depends(verify_token),
     db: Session = Depends(get_db)
 ):
-    skip = (page_number - 1) * page_size
-    limit = page_size
+    offset = (page - 1) * limit
 
     # Query dasar
     query = db.query(Finance)
-    
-    # Filter
+
+    # Filter opsional
     if category:
         query = query.filter(Finance.category == category)
     if start_date:
         query = query.filter(Finance.date >= start_date)
     if end_date:
         query = query.filter(Finance.date <= end_date)
-    
-    # Eksekusi query
-    transactions = query.order_by(Finance.date.desc(), Finance.id.desc()).offset(skip).limit(limit).all()
-    
-    # Hitung balance_before untuk setiap transaksi
+
+    # Total sebelum pagination
+    total = query.count()
+
+    # Ambil data sesuai halaman
+    transactions = (
+        query.order_by(Finance.date.desc(), Finance.id.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    # Hitung balance_before
     transactions_with_balance = []
     for i, transaction in enumerate(transactions):
         if i == 0:
-            # Untuk transaksi terbaru, balance_before adalah balance_after dari transaksi sebelumnya
-            prev_transaction = db.query(Finance)\
+            prev_transaction = (
+                db.query(Finance)
                 .filter(
-                    (Finance.date < transaction.date) |
-                    ((Finance.date == transaction.date) & (Finance.id < transaction.id))
-                )\
-                .order_by(Finance.date.desc(), Finance.id.desc())\
+                    (Finance.date < transaction.date)
+                    | ((Finance.date == transaction.date) & (Finance.id < transaction.id))
+                )
+                .order_by(Finance.date.desc(), Finance.id.desc())
                 .first()
-            balance_before = prev_transaction.balance_after if prev_transaction else Decimal('0')
-        else:
-            # Untuk transaksi lainnya, balance_before adalah balance_after dari transaksi sebelumnya dalam hasil
-            balance_before = transactions[i-1].balance_after
-        transactions_with_balance.append(
-            FinanceResponse(
-                **transaction.__dict__,
-                balance_before=balance_before
             )
+            balance_before = prev_transaction.balance_after if prev_transaction else Decimal("0")
+        else:
+            balance_before = transactions[i - 1].balance_after
+
+        transactions_with_balance.append(
+            FinanceResponse(**transaction.__dict__, balance_before=balance_before)
         )
-    return FinanceHistoryResponse(
-        transactions=transactions_with_balance,
-        current_balance=get_current_balance(db)
-    )
+
+    # Hitung total halaman (dibulatkan ke atas)
+    total_pages = (total + limit - 1) // limit
+
+    # Return response dengan meta
+    return {
+        "data": transactions_with_balance,
+        "meta": {
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "total_pages": total_pages,
+            "current_balance": get_current_balance(db)
+        },
+    }
 
 
 @router.get("/summary")

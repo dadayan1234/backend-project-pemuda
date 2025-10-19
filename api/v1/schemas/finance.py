@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 from decimal import Decimal
+from typing import List
 
 class FinanceBase(BaseModel):
     amount: Decimal
@@ -46,3 +47,7 @@ class FinanceResponseDetail(FinanceBase):
 class FinanceHistoryResponse(BaseModel):
     transactions: list[FinanceResponse]
     current_balance: Decimal  # Saldo terkini
+    
+class PaginatedFinanceResponse(BaseModel):
+    data: List[FinanceResponse]
+    meta: dict
